@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Iron Home – Muscle Gain Tracker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#14191c;--mute:#667078;--line:#e1e6e4;--g:#12b34a;--gs:#dff6e7;--b:#2563eb;--warn:#fff4d6;--warnink:#6b4a00;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181a;--card:#1f2427;--ink:#eef2f0;--mute:#98a3a0;--line:#2d3438;--g:#3dff7a;--gs:#17331f;--b:#5b8dff;--warn:#3a3012;--warnink:#f3d98a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15181a;--card:#1f2427;--ink:#eef2f0;--mute:#98a3a0;--line:#2d3438;--g:#3dff7a;--gs:#17331f;--b:#5b8dff;--warn:#3a3012;--warnink:#f3d98a;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 Barlow,system-ui,sans-serif;display:flex;flex-direction:column-reverse}
+h1,h2,h3,.num{font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700;letter-spacing:.01em;margin:0}
+nav{display:flex;background:var(--card);border-top:1px solid var(--line);position:sticky;bottom:0;z-index:5;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;color:var(--mute);padding:9px 2px 8px;font:500 11px Barlow,sans-serif;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--g)}
+nav .brand,nav .desk{display:none}
+main{flex:1;padding:16px 16px 24px;max-width:960px;width:100%;margin:0 auto;overflow-x:hidden}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+h1{font-size:30px}
+h2{font-size:22px;margin-bottom:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.knee{background:var(--warn);color:var(--warnink);border-radius:14px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
+.stat small{color:var(--mute);font-size:12px}
+.stat .num{font-size:28px;display:block;line-height:1.1}
+.stat .num.g{color:var(--g)}
+.btn{background:var(--g);color:#06210f;border:0;border-radius:12px;padding:11px 16px;font:600 15px Barlow,sans-serif;cursor:pointer}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn:focus-visible,nav button:focus-visible,.chip:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--b);outline-offset:2px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:none;color:var(--mute);border-radius:99px;padding:5px 12px;font:500 13px Barlow,sans-serif;cursor:pointer}
+.chip.on{background:var(--g);color:#06210f;border-color:var(--g)}
+.ex{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-top:1px solid var(--line)}
+.ex:first-of-type{border-top:0}
+.ex span{color:var(--mute)}
+svg.chart{width:100%;height:auto;display:block}
+select,input{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 8px;font:500 14px Barlow,sans-serif}
+input[type=number]{width:58px}
+input.name{width:100%}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{display:inline-block;background:var(--gs);color:var(--g);border-radius:8px;padding:1px 8px;font-size:12px;font-weight:600}
+details{border-top:1px solid var(--line);padding:10px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:600;display:flex;justify-content:space-between;list-style:none}
+summary::-webkit-details-marker{display:none}
+details p{margin:6px 0 0;color:var(--mute)}
+details b{color:var(--ink)}
+.lock{border:1.5px dashed var(--line);border-radius:14px;padding:12px;color:var(--mute);font-size:14px}
+.empty{text-align:center;padding:28px 8px;color:var(--mute)}
+.empty h2{color:var(--ink)}
+@media(min-width:800px){
+body{flex-direction:row}
+nav{position:sticky;top:0;height:100vh;flex-direction:column;width:220px;border-top:0;border-right:1px solid var(--line);padding:20px 12px;gap:4px}
+nav .brand{display:block;font:700 26px "Barlow Condensed",sans-serif;color:var(--g);padding:0 10px 14px}
+nav button{flex:none;flex-direction:row;font-size:15px;gap:12px;padding:10px;border-radius:12px;justify-content:flex-start}
+nav button.on{background:var(--gs)}
+nav .desk{display:block;margin-top:auto}
+main{padding:28px 32px}
+.grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(prefers-reduced-motion:no-preference){main>*{animation:in .25s ease-out}@keyframes in{from{opacity:.4}to{opacity:1}}}
+</style>
+</head>
+<body>
+<nav id="nav" aria-label="Main"></nav>
+<main id="app"></main>
+<script>
+(function(){
+var KEY="ironhome.v1";
+var DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+var IC={Dashboard:"M3 12l9-9 9 9M5 10v10h14V10",Plan:"M4 5h16M4 12h16M4 19h10","Session":"M6 4v16M18 4v16M3 8v8M21 8v8M6 12h12",Library:"M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3V4z","Progress":"M3 17l6-6 4 4 8-8","Nutrition":"M12 3c4 3 6 7 6 11a6 6 0 01-12 0c0-4 2-8 6-11z",Settings:"M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3"};
+var PAGES=["Dashboard","Plan","Session","Library","Progress","Nutrition","Settings"];
+var LABEL={Plan:"Plan",Session:"Session",Library:"Library",Progress:"Progress",Nutrition:"Nutrition",Dashboard:"Dashboard",Settings:"Settings"};
+var LIB=[
+["Dumbbell Floor Press","Chest","Pectorals, front delts, triceps","Lie on your back, knees bent, feet flat. Dumbbells above the chest.","Lower elbows until upper arms touch the floor, pause, press up.","Flaring elbows wide; bouncing off the floor.","The floor limits range, which protects shoulders. Keep feet flat and don’t push through the knee."],
+["Dumbbell Squeeze Press","Chest","Inner chest, triceps","Lie on your back, dumbbells pressed together over the chest.","Keep the dumbbells touching while you lower and press.","Letting the dumbbells drift apart.","Start light; the squeeze adds tension quickly."],
+["Single Arm Dumbbell Row","Back","Lats, rhomboids, biceps","Hand on a sturdy surface, back flat, dumbbell hanging.","Pull the elbow to your hip, pause, lower slowly.","Twisting the torso; shrugging the shoulder.","Use a stable support at hip height. Avoid deep knee bend; keep a soft stance."],
+["Dumbbell Rear Delt Fly","Back","Rear delts, upper back","Hinge forward with a flat back, or lie face-down on the floor.","Raise arms out to the side with slight elbow bend.","Swinging weight with momentum.","Go light. Skip hip-hinge variations if the knee complains."],
+["Seated Dumbbell Shoulder Press","Shoulders","Front and side delts, triceps","Sit tall, dumbbells at shoulder height, palms forward.","Press overhead, lower under control.","Arching the lower back.","Brace your core. Use a stable seat that doesn’t need deep knee bend."],
+["Dumbbell Lateral Raise","Shoulders","Side delts","Stand or sit, dumbbells at sides.","Raise arms to shoulder height with soft elbows.","Using momentum; lifting above shoulders.","Light weights work best."],
+["Dumbbell Bicep Curl","Biceps","Biceps","Sit or stand tall, palms forward.","Curl up, squeeze, lower for 2–3 seconds.","Swinging the torso.","Keep elbows by your sides."],
+["Hammer Curl","Biceps","Brachialis, forearms","Palms facing each other, elbows tucked.","Curl with a neutral grip.","Shrugging shoulders.","Choose a weight you can control."],
+["Seated Overhead Triceps Extension","Triceps","Triceps","Sit tall, one dumbbell held overhead with both hands.","Lower behind the head, extend back up.","Flaring elbows; arching the back.","Start light to protect the elbows."],
+["Dead Bug","Core","Deep core","Lie on your back, arms up, hips and knees at 90°.","Lower opposite arm and leg slowly, keep the lower back on the floor.","Back arching off the floor.","If bending the knee hurts, keep the leg movement small or skip it."],
+["Abdominal Bracing","Core","Deep core","Lie on your back, knees bent, feet flat.","Tighten the abs as if bracing for a light poke. Breathe normally.","Holding your breath.","Gentle and low-impact. Stop if it causes any pain."],
+["Glute Bridge","Lower Body","Glutes, hamstrings","Lie on your back, knees bent about 90°, feet flat, dumbbell on hips if wanted.","Press through heels, lift hips until your body is in a line, pause, lower slowly.","Overarching the lower back; pushing up on toes.","Small knee bend only. Stop if the knee hurts."],
+["Dumbbell Romanian Deadlift","Lower Body","Hamstrings, glutes, lower back","Stand tall, dumbbells in front of thighs, knees soft.","Push hips back with a flat back, lower to mid-shin, stand up by driving hips forward.","Rounding the back; squatting down instead of hinging.","Hip hinge, not a squat. Keep the knee bend small and use light weight."],
+["Standing Calf Raise","Lower Body","Calves","Stand holding dumbbells at your sides, feet hip-width.","Rise onto the balls of your feet, pause, lower slowly.","Bouncing; rolling the ankles.","Keep knees straight but not locked. Hold a wall for balance."]
+];
+var PLAN0=[
+{id:"A",name:"Upper Body A",day:1,ex:[["Dumbbell Floor Press",3,"10–12"],["Single Arm Dumbbell Row",3,"10–12"],["Seated Dumbbell Shoulder Press",2,"10–12"],["Dumbbell Lateral Raise",2,"12–15"],["Dumbbell Bicep Curl",2,"10–12"]]},
+{id:"B",name:"Upper Body B",day:3,ex:[["Dumbbell Squeeze Press",3,"10–12"],["Single Arm Dumbbell Row",3,"10–12"],["Dumbbell Rear Delt Fly",2,"12–15"],["Hammer Curl",2,"10–12"],["Seated Overhead Triceps Extension",2,"10–12"]]},
+{id:"C",name:"Upper Body + Core",day:5,ex:[["Dumbbell Floor Press",3,"10–12"],["Single Arm Dumbbell Row",3,"10–12"],["Dumbbell Lateral Raise",2,"12–15"],["Dead Bug",2,"10 per side"],["Abdominal Bracing",2,"20–30 sec"]]},
+{id:"D",name:"Lower Body (knee-friendly)",day:6,ex:[["Glute Bridge",2,"12–15"],["Dumbbell Romanian Deadlift",2,"10–12"],["Standing Calf Raise",2,"12–15"],["Dead Bug",2,"10 per side"]]}
+];
+function seed(){
+  var now=new Date();now.setHours(12,0,0,0);var w=[],s=[];
+  for(var i=27;i>=0;i-=3){var d=new Date(now-i*864e5);w.push({d:d.getTime(),kg:+(63+(27-i)*0.035+(i%2?0.1:-0.05)).toFixed(1)})}
+  for(var j=0;j<5;j++){var t=new Date(now-(25-j*5)*864e5);s.push({d:t.getTime(),vol:1800+j*190,floor:8+(j>2?1:0)})}
+  return{profile:{start:63,target:68,height:174,age:24,start0:now-28*864e5},plan:PLAN0,weights:w,sessions:s,theme:"auto"};
+}
+var S;
+try{S=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){S=null}
+if(!S||!S.plan)S=seed();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+var page="Dashboard",range="30",cat="All";
+var app=document.getElementById("app"),nav=document.getElementById("nav");
+if(S.theme&&S.theme!=="auto")document.documentElement.setAttribute("data-theme",S.theme);
+
+function renderNav(){
+  nav.innerHTML='<div class="brand">Iron Home</div>'+PAGES.map(function(p){
+    return '<button data-nav="'+p+'" class="'+(p===page?"on":"")+'" aria-label="'+LABEL[p]+'"'+(p===page?' aria-current="page"':"")+'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+IC[p]+'"/></svg>'+LABEL[p]+'</button>'}).join("")+
+  '<button class="desk" data-act="theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg>Toggle theme</button>';
+}
+function knee(){return '<div class="knee" role="note"><b>Knee safety:</b> Lower body is unlocked with low-bend moves only. No deep squats, lunges or jumping. Have your right knee assessed by a doctor or physio before adding load. Skip any exercise that hurts.</div>'}
+
+function todayPlan(){var d=new Date().getDay();return S.plan.filter(function(p){return +p.day===d})[0]}
+function chart(data,color){
+  if(data.length<2)return '<div class="empty">Log at least two entries to see a trend.</div>';
+  var W=600,H=200,P=28,xs=data.map(function(p){return p.x}),ys=data.map(function(p){return p.y});
+  var x0=Math.min.apply(0,xs),x1=Math.max.apply(0,xs),y0=Math.min.apply(0,ys)-.3,y1=Math.max.apply(0,ys)+.3;
+  function X(v){return P+(v-x0)/(x1-x0||1)*(W-2*P)}function Y(v){return H-P-(v-y0)/(y1-y0||1)*(H-2*P)}
+  var pts=data.map(function(p){return X(p.x).toFixed(1)+","+Y(p.y).toFixed(1)}).join(" ");
+  var g="";for(var k=0;k<=2;k++){var v=y0+(y1-y0)*k/2;g+='<line x1="'+P+'" x2="'+(W-P)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="var(--line)"/><text x="2" y="'+(Y(v)+4)+'" font-size="11" fill="var(--mute)">'+v.toFixed(1)+'</text>'}
+  var dots=data.map(function(p){return '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="4" fill="'+color+'"/>'}).join("");
+  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Trend chart">'+g+'<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linejoin="round"/>'+dots+'</svg>';
+}
+function inRange(t){if(range==="all")return true;var days=range==="8w"?56:+range;return t>=Date.now()-days*864e5}
+function dash(){
+  var p=S.profile,ws=S.weights.slice().sort(function(a,b){return a.d-b.d}),cur=ws.length?ws[ws.length-1].kg:p.start;
+  var done=S.sessions.length,vol=S.sessions.reduce(function(a,s){return a+s.vol},0);
+  var weeks=Math.min(8,Math.floor((Date.now()-p.start0)/6048e5)+1);
+  var wkDone=S.sessions.filter(function(s){return s.d>=Date.now()-7*864e5}).length;
+  var rate=Math.min(100,Math.round(wkDone/3*100));
+  var tp=todayPlan();
+  var data=ws.filter(function(w){return inRange(w.d)}).map(function(w){return{x:w.d,y:w.kg}});
+  var chips=[["7","7 days"],["30","30 days"],["8w","8 weeks"],["all","All time"]].map(function(r){return '<button class="chip'+(range===r[0]?" on":"")+'" data-range="'+r[0]+'">'+r[1]+'</button>'}).join("");
+  var today=tp?'<h2>Today: '+esc(tp.name)+'</h2>'+tp.ex.map(function(e){return '<div class="ex"><div>'+esc(e[0])+'</div><span>'+e[1]+' × '+esc(e[2])+'</span></div>'}).join("")+'<div class="row" style="margin-top:12px;justify-content:space-between"><span style="color:var(--mute)">About '+(tp.ex.length*9+5)+' min</span>'+(doneToday()?'<span class="tag">Done today ✓</span>':(S.draft?'<button class="btn" data-nav="Session">Resume workout</button>':'<button class="btn" data-do="start:'+S.plan.indexOf(tp)+'">Start workout</button>'))+'</div>'
+    :'<h2>Rest day</h2><p style="color:var(--mute);margin:0">Recovery is when muscle is built. Eat well, sleep, and stay loose. Next workout: '+DAYS[nextDay()]+'.</p>';
+  return '<div class="top"><div><h1>Dashboard</h1><span style="color:var(--mute)">Week '+weeks+' of 8</span></div><button class="chip" data-act="theme">Theme</button></div>'+knee()+
+  '<div class="grid">'+
+  st("Body weight",cur+" kg",1)+st("Target",p.target+" kg")+st("To go",(p.target-cur).toFixed(1)+" kg")+st("Workouts done",done)+st("This week",rate+"%")+st("Total volume",Math.round(vol).toLocaleString()+" kg")+'</div>'+
+  '<div class="card"><h2>Body weight</h2><div class="chips">'+chips+'</div>'+chart(data,"var(--g)")+'<small style="color:var(--mute)">Aim for about 0.15–0.30 kg a week. One reading is not a trend; look at the line.</small></div>'+
+  '<div class="card">'+today+'</div>';
+}
+function st(a,b,g){return '<div class="stat"><small>'+a+'</small><span class="num'+(g?" g":"")+'">'+b+'</span></div>'}
+function nextDay(){var d=new Date().getDay();for(var i=1;i<=7;i++){var n=(d+i)%7;if(S.plan.some(function(p){return +p.day===n}))return n}return 1}
+
+function plan(){
+  var h='<div class="top"><h1>Workout plan</h1></div>'+knee()+'<p style="color:var(--mute)">Templates, not prescriptions. Start with 2 sets per exercise in weeks 1–2. Nothing changes unless you change it.</p>';
+  S.plan.forEach(function(p,i){
+    var opts=DAYS.map(function(d,n){return '<option value="'+n+'"'+(+p.day===n?" selected":"")+'>'+d+'</option>'}).join("");
+    h+='<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">'+esc(p.name)+'</h2><select data-day="'+i+'" aria-label="Day for '+esc(p.name)+'">'+opts+'</select></div>';
+    p.ex.forEach(function(e,j){h+='<div class="row ex"><input class="name" style="flex:1;min-width:140px" data-f="n" data-i="'+i+'" data-j="'+j+'" value="'+esc(e[0])+'" aria-label="Exercise"><input type="number" min="1" max="10" data-f="s" data-i="'+i+'" data-j="'+j+'" value="'+e[1]+'" aria-label="Sets"><input style="width:90px" data-f="r" data-i="'+i+'" data-j="'+j+'" value="'+esc(e[2])+'" aria-label="Reps"><button class="chip" data-del="'+i+','+j+'" aria-label="Remove exercise">Remove</button></div>'});
+    h+='<div style="margin-top:10px"><button class="chip" data-add="'+i+'">Add exercise</button></div></div>'}); 
+  h+='<div class="lock"><b>Lower body is on.</b> The optional Saturday day uses hip-hinge and low-bend moves only. Keep the load light and get your knee assessed before going heavier.</div>';
+  return h;
+}
+function library(){
+  var cats=["All","Chest","Back","Shoulders","Biceps","Triceps","Core","Lower Body"];
+  var chips=cats.map(function(c){return '<button class="chip'+(cat===c?" on":"")+'" data-cat="'+c+'">'+c+'</button>'}).join("");
+  var list=LIB.filter(function(e){return cat==="All"||e[1]===cat});
+  var body=(cat==="Lower Body"?'<div class="lock" style="margin-bottom:8px">Knee-friendly picks only: no deep squats, lunges or jumping. Stop on any pain.</div>':'')+
+    list.map(function(e){return '<details><summary>'+esc(e[0])+'<span class="tag">'+e[1]+'</span></summary><p><b>Muscles:</b> '+e[2]+'</p><p><b>Equipment:</b> Dumbbells, floor</p><p><b>Start:</b> '+e[3]+'</p><p><b>Do:</b> '+e[4]+'</p><p><b>Avoid:</b> '+e[5]+'</p><p><b>Safety:</b> '+e[6]+'</p></details>'}).join("");
+  return '<div class="top"><h1>Exercise library</h1></div>'+knee()+'<div class="chips">'+chips+'</div><div class="card">'+body+'</div>';
+}
+var rest=0,rt=null,msg="";
+function doneToday(){var n=new Date().toDateString();return S.sessions.some(function(s){return new Date(s.d).toDateString()===n})}
+function nums(r){return String(r).match(/\d+/g)||["10"]}
+function topR(r){var m=nums(r);return +m[m.length-1]}
+function lastKg(n){for(var i=S.sessions.length-1;i>=0;i--){var x=(S.sessions[i].ex||[]).filter(function(e){return e.n===n})[0];if(x)return x.kg}return 0}
+function startKg(n){return S.w&&S.w[n]!=null?S.w[n]:(lastKg(n)||(/Dead Bug|Bracing/.test(n)?0:6))}
+function startSession(i){var p=S.plan[i];S.draft={name:p.name,t:Date.now(),ex:p.ex.map(function(e){var kg=startKg(e[0]),a=[];for(var k=0;k<e[1];k++)a.push({kg:kg,reps:+nums(e[2])[0],done:false});return{n:e[0],r:e[2],sets:a,skip:false,note:"",easy:false}})};page="Session"}
+function vol(e){var one=/Single Arm|Overhead Triceps/.test(e.n);return e.sets.reduce(function(a,s){return a+(s.done&&!e.skip?s.kg*s.reps*(one?1:2):0)},0)}
+function fmt(s){s=Math.max(s,0);return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
+function startRest(s){rest=s;clearInterval(rt);rt=setInterval(function(){rest--;var el=document.getElementById("rt");if(el)el.textContent=fmt(rest);if(rest<=0){clearInterval(rt);try{navigator.vibrate&&navigator.vibrate(300)}catch(e){}}},1000)}
+function val(id){var e=document.getElementById(id);return e?e.value:""}
+function sum(a,k){return a.reduce(function(s,x){return s+x[k]},0)}
+function finish(){
+  var D=S.draft,v=0,n=0,ex=[];
+  D.ex.forEach(function(e){if(e.skip)return;var d=e.sets.filter(function(s){return s.done});if(!d.length)return;
+    v+=vol(e);n+=d.length;var kg=Math.max.apply(0,d.map(function(s){return s.kg}));ex.push({n:e.n,kg:kg,reps:Math.max.apply(0,d.map(function(s){return s.reps}))});
+    if(e.easy&&d.length===e.sets.length&&kg>0&&d.every(function(s){return s.reps>=topR(e.r)})){S.sugg=S.sugg.filter(function(x){return x.n!==e.n});S.sugg.push({n:e.n,kg:kg+1})}});
+  if(!n){msg="Tick at least one set as done before finishing.";return}
+  S.sessions.push({d:Date.now(),name:D.name,vol:v,sets:n,ex:ex});S.draft=null;clearInterval(rt);rest=0;page="Progress";msg="Workout saved. Total volume "+Math.round(v)+" kg."}
+function act(a){
+  var p=a.split(":"),c=p[0],i=+p[1],D=S.draft;
+  if(c==="start")startSession(i);
+  else if(c==="addset"){var e=D.ex[i],l=e.sets[e.sets.length-1];e.sets.push({kg:l?l.kg:0,reps:l?l.reps:10,done:false})}
+  else if(c==="delset"){if(D.ex[i].sets.length>1)D.ex[i].sets.pop()}
+  else if(c==="skip")D.ex[i].skip=!D.ex[i].skip;
+  else if(c==="quit"){S.draft=null;clearInterval(rt);rest=0}
+  else if(c==="finish")finish();
+  else if(c==="rest")startRest(i);
+  else if(c==="acc"){var g=S.sugg[i];S.w=S.w||{};S.w[g.n]=g.kg;S.sugg.splice(i,1)}
+  else if(c==="rej")S.sugg.splice(i,1);
+  else if(c==="addw"){var w=parseFloat(val("wk"));if(!(w>30&&w<200)){msg="Enter a weight between 30 and 200 kg.";return}S.weights.push({d:Date.now(),kg:w})}
+  else if(c==="addf"){var k=parseFloat(val("fk")),n=val("fn").trim();if(!n||!(k>=0&&k<5000)){msg="Add a food name and calories (0–5000).";return}S.food.push({d:Date.now(),meal:val("fm"),name:n,kcal:k,pro:parseFloat(val("fp"))||0})}
+  else if(c==="delf")S.food.splice(i,1);
+  else if(c==="addk"){var l2=parseInt(val("kl"),10);if(!(l2>=0&&l2<=10)){msg="Pain level must be 0–10.";return}S.knee.push({d:Date.now(),lvl:l2,loc:val("kc"),trig:val("kt"),sw:val("ks"),note:val("kn")})}
+  else if(c==="import"){try{var o=JSON.parse(val("bk"));if(!o.plan||!o.sessions)throw 0;S=o;migrate();msg="Backup restored."}catch(x){msg="That text is not a valid backup."}}
+  save()}
+function session(){
+  var D=S.draft;
+  if(!D)return '<div class="top"><h1>Workout session</h1></div>'+knee()+'<div class="card"><h2>Pick today’s workout</h2>'+S.plan.map(function(p,i){return '<div class="row ex"><div style="flex:1">'+esc(p.name)+'<br><span>'+DAYS[p.day]+' · '+p.ex.length+' exercises</span></div><button class="btn" data-do="start:'+i+'">Start</button></div>'}).join("")+'</div>';
+  var tot=0,dn=0;D.ex.forEach(function(e){e.sets.forEach(function(s){tot++;if(s.done)dn++})});
+  var h='<div class="top"><div><h1>'+esc(D.name)+'</h1><span style="color:var(--mute)">'+dn+'/'+tot+' sets ticked · kg is per hand</span></div></div>'+knee()+
+  '<div class="card"><div class="row"><b>Rest</b><span class="num" id="rt" style="font-size:26px;min-width:56px">'+fmt(rest)+'</span>'+[60,90,120].map(function(s){return '<button class="chip" data-do="rest:'+s+'">'+s+'s</button>'}).join("")+'</div></div>';
+  D.ex.forEach(function(e,i){
+    h+='<div class="card" style="'+(e.skip?'opacity:.55':'')+'"><div class="row" style="justify-content:space-between"><h2 style="margin:0">'+esc(e.n)+'</h2><span class="tag">Target '+esc(e.r)+'</span></div>';
+    e.sets.forEach(function(s,j){var at=' data-e="'+i+'" data-s="'+j+'"';h+='<div class="row ex"><span style="width:44px">Set '+(j+1)+'</span><input type="number" step="0.5" min="0" max="30" data-k="kg"'+at+' value="'+s.kg+'" aria-label="kg per hand"> kg <input type="number" min="0" max="100" data-k="reps"'+at+' value="'+s.reps+'" aria-label="reps"> reps <label><input type="checkbox" data-k="done"'+at+(s.done?' checked':'')+(e.skip?' disabled':'')+'> Done</label></div>'});
+    h+='<div class="row" style="margin-top:8px"><button class="chip" data-do="addset:'+i+'">Add set</button><button class="chip" data-do="delset:'+i+'">Remove set</button><button class="chip" data-do="skip:'+i+'">'+(e.skip?'Undo skip':'Skip (pain)')+'</button><label><input type="checkbox" data-k="easy" data-e="'+i+'"'+(e.easy?' checked':'')+'> Felt easy (2–3 reps left)</label></div><input class="name" style="margin-top:8px" placeholder="Notes" aria-label="Notes" data-k="note" data-e="'+i+'" value="'+esc(e.note)+'"></div>'});
+  return h+'<div class="row"><button class="btn" data-do="finish">Finish workout</button><button class="chip" data-do="quit">Discard</button></div>';
+}
+function wkRow(k,a,b){var n=Math.min(3,S.sessions.filter(function(s){return s.d>=a&&s.d<b}).length),w=S.weights.filter(function(x){return x.d>=a&&x.d<b}),av=w.length?sum(w,"kg")/w.length:0;return '<div class="ex"><div>Week '+(k+1)+'</div><span>'+n+'/3 workouts · '+Math.round(n/3*100)+'% · '+(av?av.toFixed(1)+' kg avg':'no weight')+'</span></div>'}
+function progress(){
+  var ws=S.weights.slice().sort(function(a,b){return a.d-b.d}),sx=S.sessions.slice().sort(function(a,b){return a.d-b.d});
+  var h='<div class="top"><h1>Progress</h1></div><div class="grid">'+st("Workouts done",sx.length,1)+st("Total volume",Math.round(sum(sx,"vol")).toLocaleString()+" kg")+st("Weight",(ws.length?ws[ws.length-1].kg:S.profile.start)+" kg")+'</div>';
+  if(S.sugg.length)h+='<div class="card"><h2>Progression suggestions</h2>'+S.sugg.map(function(g,i){return '<div class="row ex"><div style="flex:1">'+esc(g.n)+'<br><span>Try '+g.kg+' kg per hand next time</span></div><button class="chip on" data-do="acc:'+i+'">Accept</button><button class="chip" data-do="rej:'+i+'">Not now</button></div>'}).join("")+'</div>';
+  h+='<div class="card"><h2>Weekly summary</h2>';
+  for(var k=0;k<8;k++){var a=S.profile.start0+k*6048e5;if(a>Date.now())break;h+=wkRow(k,a,a+6048e5)}
+  h+='</div><div class="card"><h2>Body weight</h2>'+chart(ws.map(function(w){return{x:w.d,y:w.kg}}),"var(--g)")+'<div class="row" style="margin-top:8px"><input type="number" step="0.1" id="wk" placeholder="kg" aria-label="Weight in kg"><button class="btn" data-do="addw:0">Log weight</button></div></div>';
+  h+='<div class="card"><h2>Training volume per workout</h2>'+chart(sx.map(function(s){return{x:s.d,y:s.vol}}),"var(--b)")+'</div>';
+  var pr={};S.sessions.forEach(function(s){(s.ex||[]).forEach(function(e){if(!pr[e.n]||e.kg>pr[e.n].kg)pr[e.n]={kg:e.kg,reps:e.reps}})});
+  var keys=Object.keys(pr);
+  h+='<div class="card"><h2>Personal records</h2>'+(keys.length?keys.map(function(n){return '<div class="ex"><div>'+esc(n)+'</div><span>'+pr[n].kg+' kg × '+pr[n].reps+'</span></div>'}).join(""):'<div class="empty">Finish a workout to set your first records.</div>')+'</div>';
+  h+='<div class="card"><h2>Knee log</h2><p style="color:var(--mute);margin-top:0">A symptom diary only. It can’t say whether training is safe. If pain rises or the knee swells, see a doctor or physio.</p><div class="row"><input type="number" min="0" max="10" id="kl" placeholder="Pain 0–10" style="width:100px" aria-label="Pain level"><input id="kc" placeholder="Where" aria-label="Pain location"><input id="kt" placeholder="Trigger" aria-label="Trigger"><select id="ks" aria-label="Swelling"><option>No</option><option>Yes</option></select></div><div class="row" style="margin:8px 0"><input class="name" id="kn" placeholder="Notes" aria-label="Notes" style="flex:1"><button class="btn" data-do="addk:0">Save entry</button></div>'+
+  (S.knee.length?S.knee.slice(-8).reverse().map(function(x){return '<div class="ex"><div>'+new Date(x.d).toLocaleDateString()+'<br><span>'+esc(x.loc||"—")+' · '+esc(x.trig||"—")+(x.sw==="Yes"?' · swelling':'')+(x.note?' · '+esc(x.note):'')+'</span></div><span class="tag">'+x.lvl+'/10</span></div>'}).join(""):'<div class="empty">No entries yet.</div>')+'</div>';
+  return h}
+function dayBox(i){var t=Date.now()-i*864e5,ds=new Date(t).toDateString(),k=sum(S.food.filter(function(f){return new Date(f.d).toDateString()===ds}),"kcal");return '<span class="tag" style="'+(k>=S.goal.kcal*.85?'':'background:var(--line);color:var(--mute)')+'">'+DAYS[new Date(t).getDay()].slice(0,3)+'</span> '}
+function nutrition(){
+  var g=S.goal,ds=new Date().toDateString(),td=S.food.filter(function(f){return new Date(f.d).toDateString()===ds});
+  function bar(a,b,c){return '<div style="margin:10px 0"><div class="row" style="justify-content:space-between"><span>'+a+'</span><span>'+Math.round(b)+' / '+Math.round(c)+'</span></div><div style="height:10px;background:var(--line);border-radius:9px"><div style="height:10px;width:'+Math.min(100,b/c*100)+'%;background:var(--g);border-radius:9px"></div></div></div>'}
+  var days="";for(var i=6;i>=0;i--)days+=dayBox(i);
+  var meals=["Breakfast","Lunch","Dinner","Snack"];
+  var h='<div class="top"><h1>Nutrition</h1></div><div class="card"><h2>Today</h2>'+bar("Calories (kcal)",sum(td,"kcal"),g.kcal)+bar("Protein (g)",sum(td,"pro"),g.pro)+'<small style="color:var(--mute)">Days at 85%+ of calorie target, last 7:</small><div style="margin-top:6px">'+days+'</div></div>';
+  h+='<div class="card"><h2>Add food</h2><div class="row"><select id="fm" aria-label="Meal">'+meals.map(function(m){return '<option>'+m+'</option>'}).join("")+'</select><input id="fn" placeholder="Food" aria-label="Food" style="flex:1;min-width:120px"><input type="number" id="fk" placeholder="kcal" style="width:80px" aria-label="Calories"><input type="number" id="fp" placeholder="protein g" style="width:90px" aria-label="Protein"></div><div style="margin-top:8px"><button class="btn" data-do="addf:0">Add</button></div></div>';
+  h+='<div class="card"><h2>Meals</h2>'+(td.length?meals.map(function(m){return td.filter(function(f){return f.meal===m}).map(function(f){return '<div class="ex"><div>'+esc(f.name)+'<br><span>'+m+' · '+f.pro+' g protein</span></div><span>'+f.kcal+' kcal <button class="chip" data-do="delf:'+S.food.indexOf(f)+'" aria-label="Remove">✕</button></span></div>'}).join("")}).join(""):'<div class="empty">Nothing logged today. Add your first meal above.</div>')+'</div>';
+  h+='<div class="card"><h2>Targets</h2><div class="row">'+[["kcal","kcal"],["pro","protein g"],["fat","fat g"]].map(function(t){return '<label>'+t[1]+' <input type="number" data-g="'+t[0]+'" value="'+g[t[0]]+'" style="width:80px"></label>'}).join("")+'</div><p style="color:var(--mute);margin-bottom:0">Carbs: about '+Math.round((g.kcal-g.pro*4-g.fat*9)/4)+' g. These are starting estimates. Adjust them using your weight trend.</p></div>';
+  return h}
+function migrate(){if(!S.plan.some(function(p){return p.id==="D"}))S.plan.push(JSON.parse(JSON.stringify(PLAN0[3])));S.knee=S.knee||[];S.food=S.food||[];S.sugg=S.sugg||[];S.draft=S.draft||null;S.goal=S.goal||{kcal:2300,pro:112,fat:68}}
+migrate();
+function later(name,phase,txt){return '<div class="top"><h1>'+name+'</h1></div>'+knee()+'<div class="card empty"><h2>Coming in '+phase+'</h2><p>'+txt+'</p><button class="btn" data-nav="Dashboard">Back to dashboard</button></div>'}
+function settings(){return '<div class="top"><h1>Settings</h1></div><div class="card"><h2>Appearance</h2><div class="chips"><button class="chip" data-theme="light">Light</button><button class="chip" data-theme="dark">Dark</button><button class="chip" data-theme="auto">Match device</button></div></div><div class="card"><h2>Your data</h2><p style="color:var(--mute)">Everything is stored on this device only. Copy the backup text to save it, or paste a backup and press Restore.</p><textarea id="bk" rows="5" style="width:100%" aria-label="Backup JSON">'+esc(JSON.stringify(S))+'</textarea><div class="chips" style="margin-top:8px"><button class="chip" data-do="import:0">Restore from text</button><button class="chip" data-act="reset">Reset sample data</button></div></div>'}
+
+function render(){
+  renderNav();
+  var h={Dashboard:dash,Plan:plan,Library:library,Settings:settings,
+    Session:session,
+    Progress:progress,
+    Nutrition:nutrition}[page];
+  app.innerHTML=(msg?'<div class="knee" role="alert">'+esc(msg)+'</div>':"")+h();msg="";
+}
+function toggleTheme(){var dark=document.documentElement.getAttribute("data-theme")==="dark"||(!document.documentElement.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme:dark)").matches);setTheme(dark?"light":"dark")}
+function setTheme(t){S.theme=t;if(t==="auto")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",t);save()}
+document.addEventListener("click",function(ev){
+  var t=ev.target.closest("[data-nav],[data-range],[data-cat],[data-del],[data-add],[data-act],[data-theme],[data-do]");if(!t)return;
+  var d=t.dataset;
+  if(d.nav){page=d.nav;scrollTo(0,0)}
+  else if(d.range)range=d.range;
+  else if(d.cat)cat=d.cat;
+  else if(d.del){var a=d.del.split(",");S.plan[a[0]].ex.splice(a[1],1);save()}
+  else if(d.add){S.plan[d.add].ex.push(["New exercise",2,"10–12"]);save()}
+  else if(d.theme)setTheme(d.theme);else if(d.do)act(d.do);
+  else if(d.act==="theme")toggleTheme();
+  else if(d.act==="reset"){if(confirm("Reset everything to the sample data?")){S=seed();save()}}
+  render();
+});
+document.addEventListener("change",function(ev){
+  var t=ev.target;
+  if(t.dataset.g){var gv=parseFloat(t.value);if(gv>0)S.goal[t.dataset.g]=gv;save();render();return}
+  if(t.dataset.k){var e0=S.draft.ex[t.dataset.e],k0=t.dataset.k;
+    if(k0==="note")e0.note=t.value;else if(k0==="easy")e0.easy=t.checked;
+    else{var s0=e0.sets[t.dataset.s];if(k0==="done")s0.done=t.checked;else s0[k0]=Math.max(0,parseFloat(t.value)||0)}
+    save();render();return}
+  if(t.dataset.day!==undefined){S.plan[t.dataset.day].day=+t.value;save();return}
+  if(t.dataset.f){var e=S.plan[t.dataset.i].ex[t.dataset.j],f=t.dataset.f;
+    if(f==="n")e[0]=t.value.trim()||e[0];
+    else if(f==="s"){var v=Math.max(1,Math.min(10,parseInt(t.value,10)||e[1]));e[1]=v;t.value=v}
+    else e[2]=t.value.trim()||e[2];
+    save()}
+});
+render();
+})();
+</script>
+</body>
+</html>
