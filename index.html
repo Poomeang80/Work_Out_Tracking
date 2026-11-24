@@ -88,36 +88,6 @@ input[type=number]{width:58px}
 
 input.name{width:100%}
 
-.searchbox{width:100%;min-width:180px}
-
-.filters{display:grid;grid-template-columns:minmax(180px,2fr) repeat(2,minmax(140px,1fr));gap:8px;margin-bottom:10px}
-
-.filters label{display:flex;flex-direction:column;gap:4px;color:var(--mute);font-size:12px}
-
-.filters input,.filters select{width:100%}
-
-.resultbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;color:var(--mute);font-size:13px;margin:8px 0}
-
-.exercise-card summary{align-items:center;gap:10px}
-
-.exercise-card summary>span:first-of-type{flex:1}
-
-.exercise-meta{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-
-.exercise-media{width:180px;max-width:100%;border-radius:12px;background:var(--bg);display:block;margin:10px 0}
-
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:grid;place-items:center;padding:16px}
-
-.modal-panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;width:min(760px,100%);max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.28)}
-
-.picker-item{display:flex;width:100%;text-align:left;align-items:center;justify-content:space-between;gap:10px;background:none;color:var(--ink);border:0;border-top:1px solid var(--line);padding:11px 4px;cursor:pointer;font:500 15px Barlow,sans-serif}
-
-.picker-item:hover{background:var(--gs)}
-
-.db-status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 11px;border-radius:12px;background:var(--bg);color:var(--mute);font-size:13px}
-
-@media(max-width:640px){.filters{grid-template-columns:1fr}.exercise-meta{justify-content:flex-start}.exercise-card summary{align-items:flex-start;flex-direction:column}}
-
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 .tag{display:inline-block;background:var(--gs);color:var(--g);border-radius:8px;padding:1px 8px;font-size:12px;font-weight:600}
@@ -162,6 +132,16 @@ main{padding:28px 32px}
 
 @media(prefers-reduced-motion:no-preference){main>*{animation:in .25s ease-out}@keyframes in{from{opacity:.4}to{opacity:1}}}
 
+
+.exercise-thumb{width:58px;height:58px;border-radius:12px;object-fit:cover;background:var(--bg);border:1px solid var(--line);flex:0 0 auto}
+.exercise-hero{width:180px;max-width:42vw;height:180px;object-fit:cover;border-radius:14px;background:var(--bg);border:1px solid var(--line);float:right;margin:0 0 10px 12px}
+.library-controls{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.library-controls input,.library-controls select{width:100%}
+.sync-dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--mute);margin-right:6px}
+.sync-dot.on{background:var(--g)}
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.notice{font-size:13px;color:var(--mute);margin:6px 0}
+@media(max-width:640px){.library-controls,.auth-grid{grid-template-columns:1fr}.exercise-hero{float:none;max-width:100%}}
 </style>
 
 </head>
@@ -177,21 +157,15 @@ main{padding:28px 32px}
 
 (function(){
 
-// Repository configuration: replace these two placeholders before deploying.
-// The anon/publishable key is designed for public clients; RLS protects each user's row.
-// NEVER put a service_role key in this HTML.
-var SUPABASE_URL="https://cjnwaczouyifjjgzvexw.supabase.co/rest/v1/";
+var LEGACY_KEY="ironhome.v1",CACHE_KEY="ironhome.cloud.v2",EXERCISE_CACHE_KEY="ironhome.exercises.v3";
+// Replace these two placeholders once in the repository before deploying GitHub Pages.
+var SUPABASE_URL="https://cjnwaczouyifjjgzvexw.supabase.co";
 var SUPABASE_ANON_KEY="sb_publishable_TAcAdee0VYtRqLD8a2otPw_Fb6bZ5q1";
-
-var LEGACY_KEY="ironhome.v1",CACHE_KEY="ironhome.v2.cache";
 var SUPABASE_TABLE="iron_home_state";
-var DATASET_URLS=[
- "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/data/exercises.json",
- "https://raw.githack.com/hasaneyldrm/exercises-dataset/main/data/exercises.json"
-];
-var EXERCISES=[],dataLoading=false,dataStatus="Loading exercise dataset…";
-var supabaseClient=null,currentSession=null,authSubscription=null,remoteSaveTimer=null,remoteSaveChain=Promise.resolve(),syncBusy=false,lastHandledUser="";
-var syncStatus="Local cache only · set SUPABASE_URL and SUPABASE_ANON_KEY in this file";
+var EXERCISE_DATA_URL="https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/data/exercises.json";
+var EXERCISE_MEDIA_BASE="https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/";
+var supabaseClient=null,currentSession=null,syncBusy=false,syncStatus="Local cache only",lastHandledUser="",lastRemoteAt=0,rtChannel=null,remoteSaveTimer=null;
+var remoteSaveChain=Promise.resolve();
 
 var DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
@@ -233,6 +207,30 @@ var LIB=[
 
 ];
 
+var exerciseData=[],exerciseByName={},exerciseLoadState="Loading exercise dataset…",libQuery="",libMuscle="All",libEquipment="All",libLimit=80;
+function absoluteMedia(path){if(!path)return "";return /^https?:/i.test(path)?path:EXERCISE_MEDIA_BASE+String(path).replace(/^\.\//,"")}
+function normalizeExercise(x){
+ var ins=x.instructions&&typeof x.instructions==="object"?(x.instructions.en||Object.values(x.instructions)[0]||""):(x.instructions||"");
+ return{id:String(x.id||""),name:String(x.name||"Unnamed exercise"),category:String(x.category||x.body_part||"Other"),bodyPart:String(x.body_part||x.category||"Other"),equipment:String(x.equipment||"Other"),target:String(x.target||x.muscle_group||"Other"),muscle:String(x.muscle_group||x.target||"Other"),secondary:Array.isArray(x.secondary_muscles)?x.secondary_muscles:[],instructions:String(ins||""),image:absoluteMedia(x.image),gif:absoluteMedia(x.gif_url),attribution:String(x.attribution||"")}
+}
+function buildExerciseIndex(){exerciseByName={};exerciseData.forEach(function(x){exerciseByName[x.name.toLowerCase()]=x})}
+function fallbackExercises(){return LIB.map(function(e,i){return{id:"fallback-"+i,name:e[0],category:e[1],bodyPart:e[1],equipment:"dumbbell",target:e[2],muscle:e[2],secondary:[],instructions:[e[3],e[4],"Avoid: "+e[5],"Safety: "+e[6]].join(" "),image:"",gif:"",attribution:""}})}
+async function loadExerciseData(force){
+ try{
+  if(!force){var c=JSON.parse(localStorage.getItem(EXERCISE_CACHE_KEY)||"null");if(c&&Date.now()-c.savedAt<7*864e5&&Array.isArray(c.data)){exerciseData=c.data;buildExerciseIndex();exerciseLoadState=exerciseData.length.toLocaleString()+" exercises · cached";render();return}}
+  exerciseLoadState="Loading exercise dataset…";if(page==="Library")render();
+  var r=await fetch(EXERCISE_DATA_URL,{cache:force?"reload":"default"});if(!r.ok)throw new Error("Dataset HTTP "+r.status);
+  var raw=await r.json();exerciseData=raw.map(normalizeExercise);buildExerciseIndex();exerciseLoadState=exerciseData.length.toLocaleString()+" exercises · online";
+  try{localStorage.setItem(EXERCISE_CACHE_KEY,JSON.stringify({savedAt:Date.now(),data:exerciseData}))}catch(e){}
+ }catch(e){console.error(e);exerciseData=fallbackExercises();buildExerciseIndex();exerciseLoadState="Offline fallback · "+exerciseData.length+" exercises"}
+ render();
+}
+function exerciseFor(name){return exerciseByName[String(name||"").toLowerCase()]||null}
+function thumb(name,large,gif){var x=exerciseFor(name),u=x&&(gif?x.gif:x.image);return u?'<img class="'+(large?'exercise-hero':'exercise-thumb')+'" src="'+esc(u)+'" alt="'+esc(name)+'" loading="lazy">':''}
+function exerciseOptions(selected){
+ var src=exerciseData.length?exerciseData:fallbackExercises();return '<option value="">Choose an exercise…</option>'+src.map(function(x){return '<option value="'+esc(x.name)+'"'+(selected===x.name?' selected':'')+'>'+esc(x.name)+' · '+esc(x.equipment)+'</option>'}).join("")
+}
+
 var PLAN0=[
 
 {id:"A",name:"Upper Body A",day:1,ex:[["Dumbbell Floor Press",3,"10–12"],["Single Arm Dumbbell Row",3,"10–12"],["Seated Dumbbell Shoulder Press",2,"10–12"],["Dumbbell Lateral Raise",2,"12–15"],["Dumbbell Bicep Curl",2,"10–12"]]},
@@ -253,114 +251,39 @@ function seed(){
 
  for(var j=0;j<5;j++){var t=new Date(now-(25-j*5)*864e5);s.push({d:t.getTime(),vol:1800+j*190,floor:8+(j>2?1:0)})}
 
- return{profile:{start:63,target:68,height:174,age:24,start0:now-28*864e5},plan:JSON.parse(JSON.stringify(PLAN0)),weights:w,sessions:s,theme:"auto"};
+ return{profile:{start:63,target:68,height:174,age:24,start0:now-28*864e5},plan:PLAN0,weights:w,sessions:s,theme:"auto"};
 
 }
 
-function readJSON(key){try{return JSON.parse(localStorage.getItem(key)||"null")}catch(e){return null}}
 function clone(v){return JSON.parse(JSON.stringify(v))}
-function loadLocalEnvelope(){
- var cached=readJSON(CACHE_KEY);
- if(cached&&cached.state&&cached.state.plan)return cached;
- var legacy=readJSON(LEGACY_KEY);
- if(legacy&&legacy.plan)return{state:legacy,updatedAt:Date.now(),dirty:true,ownerId:null,source:"legacy"};
- return{state:seed(),updatedAt:Date.now(),dirty:true,ownerId:null,source:"seed"};
+var localEnvelope=null,S=null;
+try{localEnvelope=JSON.parse(localStorage.getItem(CACHE_KEY)||"null")}catch(e){localEnvelope=null}
+if(localEnvelope&&localEnvelope.state&&localEnvelope.state.plan)S=localEnvelope.state;
+if(!S){
+ var legacy=null;try{legacy=JSON.parse(localStorage.getItem(LEGACY_KEY)||"null")}catch(e){legacy=null}
+ if(legacy&&legacy.plan){S=legacy;localEnvelope={state:clone(S),updatedAt:Date.now(),dirty:true,ownerId:null,source:"legacy"}}
+ else{S=seed();localEnvelope={state:clone(S),updatedAt:Date.now(),dirty:false,ownerId:null,source:"default"}}
 }
-var localEnvelope=loadLocalEnvelope(),S=localEnvelope.state;
-function persistEnvelope(){try{localStorage.setItem(CACHE_KEY,JSON.stringify(localEnvelope));return true}catch(e){msg="Local cache save failed: "+e.message;return false}}
-function writeLocal(dirty){
- localEnvelope={state:clone(S),updatedAt:Date.now(),dirty:!!dirty,ownerId:currentSession&&currentSession.user?currentSession.user.id:(localEnvelope.ownerId||null),source:"cache"};
- persistEnvelope();
+function persistEnvelope(){try{localStorage.setItem(CACHE_KEY,JSON.stringify(localEnvelope))}catch(e){console.warn("Local cache failed",e)}}
+function markLocalClean(version,userId){
+ if(localEnvelope.updatedAt===version){localEnvelope.dirty=false;localEnvelope.ownerId=userId;localEnvelope.source="cache";persistEnvelope()}
 }
-function markLocalClean(version,userId){if(localEnvelope.updatedAt===version){localEnvelope.dirty=false;localEnvelope.ownerId=userId;localEnvelope.source="cache";persistEnvelope()}}
-function save(){writeLocal(true);scheduleRemoteSave();return Promise.resolve()}
-function normalizeExercise(x,i){
- var instructions=x.instructions||{};if(typeof instructions==="string")instructions={en:instructions};
- return{id:String(x.id||("exercise-"+i)),name:String(x.name||"Unnamed exercise"),category:String(x.category||x.body_part||"other"),body_part:String(x.body_part||x.category||"other"),equipment:String(x.equipment||"other"),target:String(x.target||x.muscle_group||"other"),muscle_group:String(x.muscle_group||x.target||""),secondary_muscles:Array.isArray(x.secondary_muscles)?x.secondary_muscles:[],instructions:instructions,instruction_steps:x.instruction_steps||{},media_id:String(x.media_id||""),image:x.image||null,gif_url:x.gif_url||null,attribution:x.attribution||""};
+function writeLocal(markDirty){
+ localEnvelope.state=clone(S);localEnvelope.updatedAt=Date.now();
+ if(markDirty!==false)localEnvelope.dirty=true;
+ if(currentSession)localEnvelope.ownerId=currentSession.user.id;
+ localEnvelope.source="cache";persistEnvelope();
+ if(markDirty!==false)queueRemoteSave();
 }
-function fallbackExercises(){return LIB.map(function(e,i){return normalizeExercise({id:"fallback-"+i,name:e[0],category:e[1],body_part:e[1],target:e[2].split(",")[0],muscle_group:e[2],secondary_muscles:e[2].split(",").slice(1),equipment:/Dead Bug|Bracing/.test(e[0])?"body weight":"dumbbell",instructions:{en:e[3]+" "+e[4]+" Avoid: "+e[5]+" Safety: "+e[6]}},i)})}
-async function fetchDataset(){
- var lastError;
- for(var i=0;i<DATASET_URLS.length;i++)try{var r=await fetch(DATASET_URLS[i],{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);var data=await r.json();if(!Array.isArray(data)||!data.length)throw new Error("Invalid dataset");return data.map(normalizeExercise).filter(function(x){return x.name&&x.id})}catch(e){lastError=e}
- throw lastError||new Error("Exercise dataset is unavailable");
-}
-async function loadExercises(){
- dataLoading=true;
- try{var fresh=await fetchDataset();EXERCISES=fresh.sort(function(a,b){return a.name.localeCompare(b.name)});dataStatus="GitHub dataset · "+EXERCISES.length.toLocaleString()+" exercises"}
- catch(e){EXERCISES=fallbackExercises();dataStatus="Built-in offline list · "+EXERCISES.length.toLocaleString()+" exercises";console.warn(e)}
- dataLoading=false;
-}
-async function refreshExerciseData(){dataLoading=true;dataStatus="Refreshing exercise dataset…";render();await loadExercises();render()}
-function validSupabaseConfig(){return /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(SUPABASE_URL||"").trim())&&!/YOUR_PROJECT_REF/i.test(SUPABASE_URL)&&String(SUPABASE_ANON_KEY||"").trim().length>20&&!/YOUR_SUPABASE_ANON_KEY/i.test(SUPABASE_ANON_KEY)}
-function scheduleRemoteSave(){
- if(!supabaseClient||!currentSession||syncBusy)return;
- clearTimeout(remoteSaveTimer);remoteSaveTimer=setTimeout(queueRemoteSave,700);
-}
-function queueRemoteSave(){
- if(!supabaseClient||!currentSession)return;
- var snapshot=clone(S),version=localEnvelope.updatedAt,userId=currentSession.user.id;
- syncStatus="Saving to Supabase…";
- remoteSaveChain=remoteSaveChain.catch(function(){}).then(async function(){
-  var result=await supabaseClient.from(SUPABASE_TABLE).upsert({user_id:userId,data:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"});
-  if(result.error)throw result.error;markLocalClean(version,userId);syncStatus="Synced · "+new Date().toLocaleTimeString();
- }).catch(function(e){syncStatus="Offline / sync failed · local cache is safe";console.error(e)}).finally(function(){if(page==="Settings")render()});
-}
-async function syncAfterLogin(session){
- if(!supabaseClient||!session)return;syncBusy=true;currentSession=session;var userId=session.user.id;syncStatus="Checking Supabase…";render();
- try{
-  var result=await supabaseClient.from(SUPABASE_TABLE).select("data,updated_at").eq("user_id",userId).maybeSingle();if(result.error)throw result.error;
-  if(result.data&&result.data.data&&result.data.data.plan){
-   if(localEnvelope.dirty&&localEnvelope.ownerId===userId){queueRemoteSave();syncStatus="Uploading offline changes…"}
-   else{S=result.data.data;migrate();writeLocal(false);localEnvelope.ownerId=userId;localEnvelope.dirty=false;persistEnvelope();syncStatus="Synced from Supabase · "+new Date(result.data.updated_at).toLocaleString()}
-  }else{
-   if(localEnvelope.ownerId&&localEnvelope.ownerId!==userId){S=seed();migrate();writeLocal(true)}
-   var snapshot=clone(S),version=localEnvelope.updatedAt;
-   var up=await supabaseClient.from(SUPABASE_TABLE).upsert({user_id:userId,data:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"});if(up.error)throw up.error;
-   markLocalClean(version,userId);try{localStorage.removeItem(LEGACY_KEY)}catch(e){}syncStatus="First sync complete · local data migrated";
-  }
-  lastHandledUser=userId;
- }catch(e){syncStatus="Supabase unavailable · using local cache";console.error(e)}finally{syncBusy=false;render()}
-}
-async function initializeSupabase(){
- if(authSubscription){try{authSubscription.unsubscribe()}catch(e){}authSubscription=null}
- supabaseClient=null;currentSession=null;lastHandledUser="";
- if(!validSupabaseConfig()){syncStatus="Local cache only · fill SUPABASE_URL and SUPABASE_ANON_KEY in the HTML";render();return}
- if(!window.supabase||!window.supabase.createClient){syncStatus="Supabase CDN unavailable · using local cache";render();return}
- try{
-  supabaseClient=window.supabase.createClient(SUPABASE_URL.trim(),SUPABASE_ANON_KEY.trim(),{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"ironhome.supabase.auth"}});
-  var got=await supabaseClient.auth.getSession();if(got.error)throw got.error;currentSession=got.data.session;
-  if(currentSession&&currentSession.user)lastHandledUser=currentSession.user.id;
-  var listener=supabaseClient.auth.onAuthStateChange(function(event,session){setTimeout(function(){currentSession=session;if(session&&session.user&&session.user.id!==lastHandledUser)syncAfterLogin(session);else{syncStatus=session?syncStatus:"Signed out · using local cache";render()}},0)});
-  authSubscription=listener.data.subscription;
-  if(currentSession)await syncAfterLogin(currentSession);else{syncStatus="Supabase ready · sign in to sync";render()}
- }catch(e){syncStatus="Supabase setup error · "+e.message;console.error(e);render()}
-}
-async function authAction(action){
- try{
-  if(!supabaseClient)throw new Error("Fill SUPABASE_URL and SUPABASE_ANON_KEY in the HTML, deploy it, then reload.");
-  var email=val("auth-email").trim(),password=val("auth-password");
-  if(action==="magic"){
-   if(!email)throw new Error("Enter your email address.");var payload={email:email};if(/^https?:/i.test(location.href))payload.options={emailRedirectTo:location.href.split("#")[0]};
-   var magic=await supabaseClient.auth.signInWithOtp(payload);if(magic.error)throw magic.error;msg="Magic link sent. Open it on this device to finish signing in.";
-  }else if(action==="signin"){
-   if(!email||!password)throw new Error("Enter email and password.");var signIn=await supabaseClient.auth.signInWithPassword({email:email,password:password});if(signIn.error)throw signIn.error;msg="Signed in.";
-  }else if(action==="signup"){
-   if(!email||password.length<6)throw new Error("Enter email and a password of at least 6 characters.");var signUp=await supabaseClient.auth.signUp({email:email,password:password});if(signUp.error)throw signUp.error;msg=signUp.data.session?"Account created and signed in.":"Account created. Check your email to confirm it.";
-  }else if(action==="signout"){
-   var out=await supabaseClient.auth.signOut();if(out.error)throw out.error;currentSession=null;lastHandledUser="";syncStatus="Signed out · using local cache";msg="Signed out.";
-  }else if(action==="syncnow"){
-   if(!currentSession)throw new Error("Sign in first.");writeLocal(true);await syncAfterLogin(currentSession);msg="Sync checked.";
-  }
- }catch(e){msg=e.message||String(e);console.error(e)}render();
-}
-
+function save(){migrate();writeLocal(true)}
 
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 
-var page="Dashboard",range="30",cat="All",libQuery="",libMuscle="All",libEquipment="All",libLimit=60,pickerPlan=-1,pickerQuery="",pickerMuscle="All",pickerEquipment="All",pickerLimit=40;
+var page="Dashboard",range="30",cat="All";
 
 var app=document.getElementById("app"),nav=document.getElementById("nav");
-app.innerHTML='<div class="card empty"><h2>Opening Iron Home</h2><p>Loading the database and exercise library…</p></div>';
+
+if(S.theme&&S.theme!=="auto")document.documentElement.setAttribute("data-theme",S.theme);
 
 
 
@@ -422,11 +345,11 @@ function dash(){
 
  var chips=[["7","7 days"],["30","30 days"],["8w","8 weeks"],["all","All time"]].map(function(r){return '<button class="chip'+(range===r[0]?" on":"")+'" data-range="'+r[0]+'">'+r[1]+'</button>'}).join("");
 
- var today=tp?'<h2>Today: '+esc(tp.name)+'</h2>'+tp.ex.map(function(e){return '<div class="ex"><div>'+esc(e[0])+'</div><span>'+e[1]+' × '+esc(e[2])+'</span></div>'}).join("")+'<div class="row" style="margin-top:12px;justify-content:space-between"><span style="color:var(--mute)">About '+(tp.ex.length*9+5)+' min</span>'+(doneToday()?'<span class="tag">Done today ✓</span>':(S.draft?'<button class="btn" data-nav="Session">Resume workout</button>':'<button class="btn" data-do="start:'+S.plan.indexOf(tp)+'">Start workout</button>'))+'</div>'
+ var today=tp?'<h2>Today: '+esc(tp.name)+'</h2>'+tp.ex.map(function(e){return '<div class="ex">'+thumb(e[0])+'<div style="flex:1">'+esc(e[0])+'</div><span>'+e[1]+' × '+esc(e[2])+'</span></div>'}).join("")+'<div class="row" style="margin-top:12px;justify-content:space-between"><span style="color:var(--mute)">About '+(tp.ex.length*9+5)+' min</span>'+(doneToday()?'<span class="tag">Done today ✓</span>':(S.draft?'<button class="btn" data-nav="Session">Resume workout</button>':'<button class="btn" data-do="start:'+S.plan.indexOf(tp)+'">Start workout</button>'))+'</div>'
 
  :'<h2>Rest day</h2><p style="color:var(--mute);margin:0">Recovery is when muscle is built. Eat well, sleep, and stay loose. Next workout: '+DAYS[nextDay()]+'.</p>';
 
- return '<div class="top"><div><h1>Dashboard</h1><span style="color:var(--mute)">Week '+weeks+' of 8</span></div><button class="chip" data-act="theme">Theme</button></div>'+knee()+
+ return '<div class="top"><div><h1>Dashboard</h1><span style="color:var(--mute)">Week '+weeks+' of 8</span></div><div class="row"><span class="tag">'+(currentSession?'Signed in as '+esc(currentSession.user.email):'Local only')+'</span><button class="chip" data-act="theme">Theme</button></div></div>'+knee()+
 
  '<div class="grid">'+
 
@@ -445,45 +368,26 @@ function nextDay(){var d=new Date().getDay();for(var i=1;i<=7;i++){var n=(d+i)%7
 
 
 
-function lower(v){return String(v||"").toLocaleLowerCase()}
-function uniqueSorted(a){var seen={},out=[];a.forEach(function(v){v=String(v||"").trim();var k=lower(v);if(v&&k!=="other"&&!seen[k]){seen[k]=1;out.push(v)}});return out.sort(function(a,b){return a.localeCompare(b)})}
-function allMuscles(){var a=[];EXERCISES.forEach(function(x){a.push(x.body_part,x.target,x.muscle_group);a=a.concat(x.secondary_muscles||[])});return uniqueSorted(a)}
-function allEquipment(){return uniqueSorted(EXERCISES.map(function(x){return x.equipment}))}
-function selectOptions(values,selected,label){return '<option value="All">'+label+'</option>'+values.map(function(v){return '<option value="'+esc(v)+'"'+(v===selected?' selected':'')+'>'+esc(v)+'</option>'}).join("")}
-function exerciseHaystack(x){return lower([x.name,x.body_part,x.category,x.equipment,x.target,x.muscle_group].concat(x.secondary_muscles||[]).join(" "))}
-function muscleValues(x){return [x.body_part,x.category,x.target,x.muscle_group].concat(x.secondary_muscles||[]).map(lower)}
-function filteredExercises(q,muscle,equipment){var words=lower(q).trim().split(/\s+/).filter(Boolean),m=lower(muscle),eq=lower(equipment);return EXERCISES.filter(function(x){var hay=exerciseHaystack(x);return(!words.length||words.every(function(w){return hay.indexOf(w)>=0}))&&(muscle==="All"||muscleValues(x).indexOf(m)>=0)&&(equipment==="All"||lower(x.equipment)===eq)})}
-function filters(prefix,q,muscle,equipment){return '<div class="filters"><label>Search<input class="searchbox" id="'+prefix+'-search" type="search" value="'+esc(q)+'" placeholder="Exercise, muscle or equipment" autocomplete="off"></label><label>Muscle / body part<select id="'+prefix+'-muscle">'+selectOptions(allMuscles(),muscle,"All muscles")+'</select></label><label>Equipment<select id="'+prefix+'-equipment">'+selectOptions(allEquipment(),equipment,"All equipment")+'</select></label></div>'}
-function findExercise(name,id){var exact=id&&EXERCISES.find(function(x){return x.id===String(id)});return exact||EXERCISES.find(function(x){return lower(x.name)===lower(name)})}
-function mediaUrl(path){if(!path)return"";path=String(path);if(/^https:\/\//i.test(path))return path;if(/^(images|videos)\//.test(path))return "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/"+path;return""}
-function instructionText(x){var v=x.instructions||{};return typeof v==="string"?v:(v.en||Object.keys(v).map(function(k){return v[k]}).filter(Boolean)[0]||"No instructions available.")}
-function exerciseTags(x){return '<span class="tag">'+esc(x.target||x.body_part)+'</span><span class="tag">'+esc(x.equipment)+'</span>'}
-
 function plan(){
- var h='<div class="top"><h1>Workout plan</h1></div>'+knee()+'<p style="color:var(--mute)">Templates, not prescriptions. Add exercises from the dataset; your plan is saved in IndexedDB.</p>';
+ var h='<div class="top"><h1>Workout plan</h1></div>'+knee()+'<p style="color:var(--mute)">Choose exercises from the dataset. Sets and reps remain editable.</p>';
  S.plan.forEach(function(p,i){
-  var opts=DAYS.map(function(d,n){return '<option value="'+n+'"'+(+p.day===n?" selected":"")+'>'+d+'</option>'}).join("");
+  var opts=DAYS.map(function(d,n){return '<option value="'+n+'"'+(+p.day===n?' selected':'')+'>'+d+'</option>'}).join("");
   h+='<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">'+esc(p.name)+'</h2><select data-day="'+i+'" aria-label="Day for '+esc(p.name)+'">'+opts+'</select></div>';
-  p.ex.forEach(function(e,j){var x=findExercise(e[0],e[3]);h+='<div class="row ex"><div style="flex:1;min-width:170px"><b>'+esc(e[0])+'</b>'+(x?'<br><span>'+esc(x.target)+' · '+esc(x.equipment)+'</span>':'')+'</div><label>Sets <input type="number" min="1" max="10" data-f="s" data-i="'+i+'" data-j="'+j+'" value="'+e[1]+'" aria-label="Sets"></label><label>Reps <input style="width:90px" data-f="r" data-i="'+i+'" data-j="'+j+'" value="'+esc(e[2])+'" aria-label="Reps"></label><button class="chip" data-del="'+i+','+j+'" aria-label="Remove exercise">Remove</button></div>'});
-  h+='<div style="margin-top:10px"><button class="chip on" data-pick="'+i+'">Add from exercise library</button></div></div>';
+  p.ex.forEach(function(e,j){h+='<div class="row ex">'+thumb(e[0])+'<select style="flex:1;min-width:210px" data-f="n" data-i="'+i+'" data-j="'+j+'" aria-label="Exercise">'+exerciseOptions(e[0])+'</select><input type="number" min="1" max="10" data-f="s" data-i="'+i+'" data-j="'+j+'" value="'+e[1]+'" aria-label="Sets"><input style="width:90px" data-f="r" data-i="'+i+'" data-j="'+j+'" value="'+esc(e[2])+'" aria-label="Reps"><button class="chip" data-del="'+i+','+j+'" aria-label="Remove exercise">Remove</button></div>'});
+  h+='<div style="margin-top:10px"><select id="pick-'+i+'" style="max-width:100%;width:360px" aria-label="Exercise to add">'+exerciseOptions("")+'</select> <button class="chip" data-add="'+i+'">Add selected</button></div></div>'
  });
- h+='<div class="lock"><b>Lower body is on.</b> Keep the load light and get your knee assessed before going heavier. Dataset exercises are informational; stop any movement that hurts.</div>';
+ h+='<div class="lock"><b>Lower body safety:</b> Avoid any movement that causes pain and get the knee assessed before adding load.</div>';
  return h;
 }
-
 function library(){
- var list=filteredExercises(libQuery,libMuscle,libEquipment),shown=list.slice(0,libLimit);
- var body=shown.map(function(x){var img=mediaUrl(x.gif_url||x.image);return '<details class="exercise-card"><summary><span>'+esc(x.name)+'</span><span class="exercise-meta">'+exerciseTags(x)+'</span></summary>'+(img?'<img class="exercise-media" loading="lazy" src="'+esc(img)+'" alt="'+esc(x.name)+' demonstration" onerror="this.style.display=\'none\'">':'')+'<p><b>Body part:</b> '+esc(x.body_part)+'</p><p><b>Target:</b> '+esc(x.target)+'</p><p><b>Muscle group:</b> '+esc(x.muscle_group||"—")+'</p><p><b>Secondary:</b> '+esc((x.secondary_muscles||[]).join(", ")||"—")+'</p><p><b>Equipment:</b> '+esc(x.equipment)+'</p><p><b>Instructions:</b> '+esc(instructionText(x))+'</p>'+(x.attribution?'<p><small>'+esc(x.attribution)+'</small></p>':'')+'</details>'}).join("");
- if(!body)body='<div class="empty"><h2>No matching exercises</h2><p>Try fewer words or clear one of the filters.</p></div>';
- return '<div class="top"><div><h1>Exercise library</h1><span style="color:var(--mute)">'+esc(dataStatus)+'</span></div><button class="chip" data-act="refreshdata"'+(dataLoading?' disabled':'')+'>'+(dataLoading?'Refreshing…':'Refresh dataset')+'</button></div>'+knee()+'<div class="card">'+filters("lib",libQuery,libMuscle,libEquipment)+'<div class="resultbar"><span>'+list.length.toLocaleString()+' matches · showing '+Math.min(shown.length,list.length).toLocaleString()+'</span><button class="chip" data-act="clearlibrary">Clear filters</button></div>'+body+(shown.length<list.length?'<div style="text-align:center;margin-top:12px"><button class="btn ghost" data-more="library">Show more</button></div>':'')+'</div>';
+ var src=exerciseData.length?exerciseData:fallbackExercises();
+ function uniq(k){return Array.from(new Set(src.map(function(x){return x[k]}).filter(Boolean))).sort(function(a,b){return a.localeCompare(b)})}
+ var muscles=uniq("target"),equipment=uniq("equipment"),q=libQuery.trim().toLowerCase();
+ var list=src.filter(function(x){var hay=(x.name+" "+x.target+" "+x.muscle+" "+x.bodyPart+" "+x.equipment).toLowerCase();return(!q||hay.indexOf(q)>=0)&&(libMuscle==="All"||x.target===libMuscle)&&(libEquipment==="All"||x.equipment===libEquipment)});
+ var controls='<div class="library-controls"><input id="lib-search" value="'+esc(libQuery)+'" placeholder="Search name, muscle or equipment" aria-label="Search exercises"><select id="lib-muscle" aria-label="Filter by target muscle"><option>All</option>'+muscles.map(function(x){return '<option'+(x===libMuscle?' selected':'')+'>'+esc(x)+'</option>'}).join("")+'</select><select id="lib-equipment" aria-label="Filter by equipment"><option>All</option>'+equipment.map(function(x){return '<option'+(x===libEquipment?' selected':'')+'>'+esc(x)+'</option>'}).join("")+'</select></div>';
+ var body=list.slice(0,libLimit).map(function(x){return '<details><summary><span class="row">'+(x.image?'<img class="exercise-thumb" src="'+esc(x.image)+'" alt="" loading="lazy">':'')+'<span>'+esc(x.name)+'<br><small style="color:var(--mute)">'+esc(x.target)+' · '+esc(x.equipment)+'</small></span></span><span class="tag">'+esc(x.bodyPart)+'</span></summary>'+(x.gif?'<img class="exercise-hero" src="'+esc(x.gif)+'" alt="Animation for '+esc(x.name)+'" loading="lazy">':'')+'<p><b>Target:</b> '+esc(x.target)+'</p><p><b>Muscle group:</b> '+esc(x.muscle)+(x.secondary.length?' · '+esc(x.secondary.join(', ')):'')+'</p><p><b>Equipment:</b> '+esc(x.equipment)+'</p><p><b>Instructions:</b> '+esc(x.instructions||'No instructions available.')+'</p>'+(x.attribution?'<p><small>'+esc(x.attribution)+'</small></p>':'')+'<div style="clear:both"></div></details>'}).join("");
+ return '<div class="top"><div><h1>Exercise library</h1><span style="color:var(--mute)">'+esc(exerciseLoadState)+'</span></div><button class="chip" data-act="refreshapi">Refresh dataset</button></div>'+knee()+controls+'<div class="card"><p class="notice">'+list.length.toLocaleString()+' matching exercises</p>'+(body||'<div class="empty">No exercises match these filters.</div>')+(list.length>libLimit?'<button class="chip" data-act="morelib">Load more</button>':'')+'</div>';
 }
-function picker(){
- if(pickerPlan<0)return"";
- var list=filteredExercises(pickerQuery,pickerMuscle,pickerEquipment),shown=list.slice(0,pickerLimit),title=S.plan[pickerPlan]?S.plan[pickerPlan].name:"Workout";
- var rows=shown.map(function(x){return '<button class="picker-item" data-choose="'+esc(x.id)+'"><span><b>'+esc(x.name)+'</b><br><small>'+esc(x.target)+' · '+esc(x.body_part)+'</small></span><span class="tag">'+esc(x.equipment)+'</span></button>'}).join("")||'<div class="empty">No matching exercises.</div>';
- return '<div class="modal" role="dialog" aria-modal="true" aria-label="Choose exercise"><div class="modal-panel"><div class="top"><div><h2>Add exercise</h2><span style="color:var(--mute)">'+esc(title)+'</span></div><button class="chip" data-close="picker">Close</button></div>'+filters("pick",pickerQuery,pickerMuscle,pickerEquipment)+'<div class="resultbar"><span>'+list.length.toLocaleString()+' matches · showing '+Math.min(shown.length,list.length).toLocaleString()+'</span></div>'+rows+(shown.length<list.length?'<div style="text-align:center;margin-top:12px"><button class="btn ghost" data-more="picker">Show more</button></div>':'')+'</div></div>';
-}
-
 var rest=0,rt=null,msg="";
 
 function doneToday(){var n=new Date().toDateString();return S.sessions.some(function(s){return new Date(s.d).toDateString()===n})}
@@ -570,7 +474,7 @@ function session(){
 
  D.ex.forEach(function(e,i){
 
- h+='<div class="card" style="'+(e.skip?'opacity:.55':'')+'"><div class="row" style="justify-content:space-between"><h2 style="margin:0">'+esc(e.n)+'</h2><span class="tag">Target '+esc(e.r)+'</span></div>';
+ h+='<div class="card" style="'+(e.skip?'opacity:.55':'')+'"><div class="row" style="justify-content:space-between">'+thumb(e.n)+'<h2 style="margin:0;flex:1">'+esc(e.n)+'</h2><span class="tag">Target '+esc(e.r)+'</span></div>';
 
  e.sets.forEach(function(s,j){var at=' data-e="'+i+'" data-s="'+j+'"';h+='<div class="row ex"><span style="width:44px">Set '+(j+1)+'</span><input type="number" step="0.5" min="0" max="30" data-k="kg"'+at+' value="'+s.kg+'" aria-label="kg per hand"> kg <input type="number" min="0" max="100" data-k="reps"'+at+' value="'+s.reps+'" aria-label="reps"> reps <label><input type="checkbox" data-k="done"'+at+(s.done?' checked':'')+(e.skip?' disabled':'')+'> Done</label></div>'});
 
@@ -634,14 +538,88 @@ function nutrition(){
 
 function migrate(){if(!S.plan.some(function(p){return p.id==="D"}))S.plan.push(JSON.parse(JSON.stringify(PLAN0[3])));S.knee=S.knee||[];S.food=S.food||[];S.sugg=S.sugg||[];S.draft=S.draft||null;S.goal=S.goal||{kcal:2300,pro:112,fat:68}}
 
+migrate();
 
 function later(name,phase,txt){return '<div class="top"><h1>'+name+'</h1></div>'+knee()+'<div class="card empty"><h2>Coming in '+phase+'</h2><p>'+txt+'</p><button class="btn" data-nav="Dashboard">Back to dashboard</button></div>'}
 
-function settings(){
- var configured=validSupabaseConfig(),signed=currentSession&&currentSession.user;
- var auth=!configured?'<div class="lock"><b>Supabase is not configured.</b><br>Edit <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> near the top of this HTML, then deploy again.</div>':(signed?'<div class="db-status"><span class="tag">Signed in</span><span>'+esc(signed.email||signed.id)+'</span></div><div class="chips" style="margin-top:10px"><button class="chip on" data-act="syncnow">Sync now</button><button class="chip" data-act="signout">Sign out</button></div>':'<div class="filters"><label>Email<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com"></label><label>Password (optional for magic link)<input id="auth-password" type="password" autocomplete="current-password" placeholder="At least 6 characters"></label></div><div class="chips"><button class="chip on" data-act="magic">Send magic link</button><button class="chip" data-act="signin">Sign in with password</button><button class="chip" data-act="signup">Create account</button></div>');
- return '<div class="top"><h1>Settings</h1></div><div class="card"><h2>Appearance</h2><div class="chips"><button class="chip" data-theme="light">Light</button><button class="chip" data-theme="dark">Dark</button><button class="chip" data-theme="auto">Match device</button></div></div><div class="card"><h2>Supabase sync</h2><p style="color:var(--mute);margin-top:0">The repository carries the Supabase project configuration, so every device only needs to sign in. <b>The anon/publishable key is safe to commit publicly when RLS is enabled. Never commit the service_role key.</b></p><div class="db-status"><span class="tag">Sync</span><span>'+esc(syncStatus)+'</span></div><hr style="border:0;border-top:1px solid var(--line);margin:14px 0">'+auth+'</div><div class="card"><h2>ตั้งค่าและ Deploy แบบย่อ</h2><ol style="padding-left:20px"><li>สร้างโปรเจกต์ฟรีที่ <b>Supabase</b></li><li>รันไฟล์ <code>supabase/migrations/20261124042817_init.sql</code> โดยเชื่อม repo ที่ <b>Integrations → GitHub</b> หรือวางไฟล์ใน <b>SQL Editor</b> แล้วกด Run</li><li>คัดลอก Project URL และ anon/publishable key จาก <b>Project Settings → API</b> ไปใส่ในค่าคงที่ <code>SUPABASE_URL</code> และ <code>SUPABASE_ANON_KEY</code> ด้านบนของไฟล์ index.html</li><li>Deploy repo ด้วย <b>GitHub Pages</b></li><li>นำ URL ของ Pages ไปเพิ่มที่ <b>Authentication → URL Configuration</b> ทั้ง Site URL และ Redirect URLs</li><li>เปิด Pages บนอุปกรณ์แต่ละเครื่อง แล้วล็อกอินด้วยอีเมลเดียวกัน</li></ol><p class="lock"><b>หมายเหตุด้านความปลอดภัย:</b> anon/publishable key เปิดเผยใน repo ได้ เพราะ Row Level Security จำกัดข้อมูลตามผู้ใช้ แต่ห้าม commit <code>service_role</code> key โดยเด็ดขาด</p></div><div class="card"><h2>Local backup</h2><p style="color:var(--mute)">localStorage remains the offline cache. Existing ironhome.v1 data is uploaded on the first successful login when no cloud row exists.</p><textarea id="bk" rows="5" style="width:100%" aria-label="Backup JSON">'+esc(JSON.stringify(S))+'</textarea><div class="chips" style="margin-top:8px"><button class="chip" data-do="import:0">Restore from text</button><button class="chip" data-act="reset">Reset sample data</button></div></div>';
+function isSupabaseConfigured(){return /^https:\/\/.+\.supabase\.co$/i.test(SUPABASE_URL)&&SUPABASE_URL.indexOf("YOUR_")<0&&SUPABASE_ANON_KEY.indexOf("YOUR_")<0}
+function setSyncStatus(text){syncStatus=text;if(page==="Settings")safeRender()}
+function flushRemoteSave(){
+ if(!supabaseClient||!currentSession)return Promise.resolve();
+ var snapshot=clone(S),version=localEnvelope.updatedAt,userId=currentSession.user.id;
+ setSyncStatus("Saving to Supabase…");
+ remoteSaveChain=remoteSaveChain.catch(function(){}).then(async function(){
+  var result=await supabaseClient.from(SUPABASE_TABLE).upsert({user_id:userId,data:snapshot,updated_at:new Date(version).toISOString()},{onConflict:"user_id"});
+  if(result.error)throw result.error;lastRemoteAt=Math.max(lastRemoteAt,version);markLocalClean(version,userId);setSyncStatus("Synced · "+new Date().toLocaleTimeString());
+  if(localEnvelope.dirty&&localEnvelope.updatedAt>version)queueRemoteSave();
+ }).catch(function(e){setSyncStatus("Offline / sync failed · local cache is safe");console.error(e)});
+ return remoteSaveChain;
 }
+function queueRemoteSave(){if(!supabaseClient||!currentSession)return;clearTimeout(remoteSaveTimer);remoteSaveTimer=setTimeout(flushRemoteSave,450)}
+function applyRemote(row,userId,force){
+ var at=new Date(row.updated_at).getTime();if(!isFinite(at))at=0;
+ if(!row.data||!row.data.plan)return false;
+ if(!force&&(at<=lastRemoteAt||(localEnvelope.dirty&&localEnvelope.ownerId===userId&&localEnvelope.updatedAt>=at)))return false;
+ lastRemoteAt=at;S=clone(row.data);migrate();localEnvelope={state:clone(S),updatedAt:at,dirty:false,ownerId:userId,source:"cloud"};persistEnvelope();
+ if(S.theme&&S.theme!=="auto")document.documentElement.setAttribute("data-theme",S.theme);else document.documentElement.removeAttribute("data-theme");
+ syncStatus="Synced from Supabase · "+new Date(at).toLocaleString();return true;
+}
+async function pullRemote(forceCloud){
+ if(!supabaseClient||!currentSession||syncBusy)return false;
+ if(localEnvelope.dirty&&!forceCloud)return false;
+ try{var r=await supabaseClient.from(SUPABASE_TABLE).select("data,updated_at").eq("user_id",currentSession.user.id).maybeSingle();if(r.error)throw r.error;if(r.data&&applyRemote(r.data,currentSession.user.id,!!forceCloud)){safeRender();return true}}catch(e){setSyncStatus("Sync check failed · local cache is safe");console.error(e)}return false;
+}
+var pendingSafeRender=false;
+function safeRender(){var a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)){pendingSafeRender=true;return}pendingSafeRender=false;render()}
+function subscribeRealtime(userId){
+ if(!supabaseClient)return;if(rtChannel)supabaseClient.removeChannel(rtChannel);
+ rtChannel=supabaseClient.channel("state-"+userId).on("postgres_changes",{event:"*",schema:"public",table:SUPABASE_TABLE,filter:"user_id=eq."+userId},function(p){if(p.new&&!localEnvelope.dirty&&applyRemote(p.new,userId,false))safeRender()}).subscribe(function(status){if(status==="SUBSCRIBED")setSyncStatus("Realtime connected")});
+}
+async function syncAfterLogin(session){
+ if(!supabaseClient||!session)return;syncBusy=true;currentSession=session;var userId=session.user.id;setSyncStatus("Checking Supabase…");
+ try{
+  var result=await supabaseClient.from(SUPABASE_TABLE).select("data,updated_at").eq("user_id",userId).maybeSingle();if(result.error)throw result.error;
+  if(result.data&&result.data.data&&result.data.data.plan){
+   var remoteAt=new Date(result.data.updated_at).getTime();
+   if(localEnvelope.dirty&&(!localEnvelope.ownerId||localEnvelope.ownerId===userId)&&localEnvelope.updatedAt>remoteAt){await flushRemoteSave()}
+   else{lastRemoteAt=0;applyRemote(result.data,userId,true)}
+  }else{
+   if(localEnvelope.ownerId&&localEnvelope.ownerId!==userId){S=seed();migrate();writeLocal(false)}
+   var snapshot=clone(S),version=localEnvelope.updatedAt||Date.now(),up=await supabaseClient.from(SUPABASE_TABLE).upsert({user_id:userId,data:snapshot,updated_at:new Date(version).toISOString()},{onConflict:"user_id"});if(up.error)throw up.error;
+   lastRemoteAt=version;markLocalClean(version,userId);try{localStorage.removeItem(LEGACY_KEY)}catch(e){}setSyncStatus("First sync complete · local data migrated");
+  }
+  lastHandledUser=userId;subscribeRealtime(userId);
+ }catch(e){setSyncStatus("Supabase unavailable · using local cache");console.error(e)}finally{syncBusy=false;render()}
+}
+async function authAction(action){
+ if(!supabaseClient){msg="Set SUPABASE_URL and SUPABASE_ANON_KEY in index.html first.";render();return}
+ var email=val("auth-email").trim(),password=val("auth-password");
+ try{
+  if(action==="signup"){if(!email||password.length<6)throw new Error("Enter an email and a password of at least 6 characters.");var a=await supabaseClient.auth.signUp({email:email,password:password});if(a.error)throw a.error;msg=a.data.session?"Account created and signed in.":"Account created. Check your email to confirm it."}
+  else if(action==="signin"){if(!email||!password)throw new Error("Enter email and password.");var b=await supabaseClient.auth.signInWithPassword({email:email,password:password});if(b.error)throw b.error;msg="Signed in."}
+  else if(action==="magic"){if(!email)throw new Error("Enter your email first.");var c=await supabaseClient.auth.signInWithOtp({email:email,options:{emailRedirectTo:location.href.split("#")[0]}});if(c.error)throw c.error;msg="Magic link sent. Open it on this device."}
+  else if(action==="signout"){var d=await supabaseClient.auth.signOut();if(d.error)throw d.error;msg="Signed out. Local cache remains on this device."}
+  else if(action==="syncnow"){if(!currentSession)throw new Error("Sign in first.");syncBusy=true;setSyncStatus("Downloading latest Cloud data…");var changed=await (async function(){syncBusy=false;return pullRemote(true)})();msg=changed?"Downloaded the latest Cloud data.":"Cloud data checked; this device is already current."}
+ }catch(e){msg=e.message||String(e)}render();
+}
+async function initSupabase(){
+ if(!isSupabaseConfigured()||!window.supabase||!window.supabase.createClient){syncStatus="Supabase not configured · local cache only";render();return}
+ try{supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);var r=await supabaseClient.auth.getSession();currentSession=r.data.session||null;
+  supabaseClient.auth.onAuthStateChange(function(event,session){currentSession=session||null;if(!session){lastHandledUser="";if(rtChannel){supabaseClient.removeChannel(rtChannel);rtChannel=null}syncStatus="Signed out · local cache only";render()}else if(session.user.id!==lastHandledUser)setTimeout(function(){syncAfterLogin(session)},0)});
+  if(currentSession)await syncAfterLogin(currentSession);else{syncStatus="Ready · sign in to sync devices";render()}
+ }catch(e){syncStatus="Supabase initialization failed · local cache only";console.error(e);render()}
+}
+
+function settings(){
+ var configured=isSupabaseConfigured(),jsReady=!!(window.supabase&&window.supabase.createClient),available=configured&&jsReady,signed=!!currentSession,email=signed?currentSession.user.email:"",disabled=available?'':' disabled';
+ var warning=!configured?'<div class="knee"><b>ยังไม่ได้ตั้งค่า Supabase / Supabase is not configured.</b><br>กรุณาแทนค่า SUPABASE_URL และ SUPABASE_ANON_KEY ใน index.html แล้ว Deploy ใหม่ / Replace both placeholders in index.html and deploy again.</div>':(!jsReady?'<div class="knee"><b>โหลด supabase-js ไม่สำเร็จ / supabase-js failed to load.</b><br>ตรวจสอบอินเทอร์เน็ต, Content Security Policy และ CDN script แล้วรีเฟรชหน้า / Check the network, CSP and CDN script, then refresh.</div>':'');
+ var login='<div class="auth-grid"><input id="auth-email" type="email" autocomplete="email" placeholder="Email"'+disabled+'><input id="auth-password" type="password" autocomplete="current-password" placeholder="Password (6+ characters)"'+disabled+'></div><div class="chips" style="margin-top:8px"><button class="btn" data-auth="signin"'+disabled+'>Sign in</button><button class="chip" data-auth="signup"'+disabled+'>Create account (email/password)</button><button class="chip" data-auth="magic"'+disabled+'>Email Magic Link</button></div>';
+ var signedControls=signed?'<p><b>Signed in as:</b> '+esc(email)+'</p><div class="chips"><button class="chip on" data-auth="syncnow">Sync now (download Cloud)</button><button class="chip" data-auth="signout">Sign out</button></div>':'';
+ return '<div class="top"><h1>Settings</h1></div><div class="card"><h2>Account / Login</h2><p><span class="sync-dot '+(signed?'on':'')+'"></span><b>Sync status:</b> '+esc(syncStatus)+'</p>'+warning+signedControls+(!signed?login:'')+'<p class="notice">ใช้บัญชี Supabase Auth อีเมลเดียวกันทุกอุปกรณ์ / Use the same Supabase Auth email on every device. This is not your GitHub login unless GitHub OAuth is separately enabled in Supabase.</p></div><div class="card"><h2>Appearance</h2><div class="chips"><button class="chip" data-theme="light">Light</button><button class="chip" data-theme="dark">Dark</button><button class="chip" data-theme="auto">Match device</button></div></div><div class="card"><h2>Backup / restore</h2><p style="color:var(--mute)">The app keeps an offline cache on this device. Copy this JSON for an extra backup.</p><textarea id="bk" rows="5" style="width:100%" aria-label="Backup JSON">'+esc(JSON.stringify(S))+'</textarea><div class="chips" style="margin-top:8px"><button class="chip" data-do="import:0">Restore from text</button><button class="chip" data-act="reset">Reset sample data</button></div></div>';
+}
+
+
+
 
 function render(){
 
@@ -655,7 +633,7 @@ function render(){
 
  Nutrition:nutrition}[page];
 
- app.innerHTML=(msg?'<div class="knee" role="alert">'+esc(msg)+'</div>':"")+h()+picker();msg="";
+ app.innerHTML=(msg?'<div class="knee" role="alert">'+esc(msg)+'</div>':"")+h();msg="";
 
 }
 
@@ -665,7 +643,7 @@ function setTheme(t){S.theme=t;if(t==="auto")document.documentElement.removeAttr
 
 document.addEventListener("click",function(ev){
 
- var t=ev.target.closest("[data-nav],[data-range],[data-cat],[data-del],[data-act],[data-theme],[data-do],[data-pick],[data-close],[data-choose],[data-more]");if(!t)return;
+ var t=ev.target.closest("[data-nav],[data-range],[data-cat],[data-del],[data-add],[data-act],[data-theme],[data-do],[data-auth]");if(!t)return;
 
  var d=t.dataset;
 
@@ -676,34 +654,28 @@ document.addEventListener("click",function(ev){
  else if(d.cat)cat=d.cat;
 
  else if(d.del){var a=d.del.split(",");S.plan[a[0]].ex.splice(a[1],1);save()}
- else if(d.pick!==undefined){pickerPlan=+d.pick;pickerQuery="";pickerMuscle="All";pickerEquipment="All";pickerLimit=40}
- else if(d.close){pickerPlan=-1}
- else if(d.choose){var x=EXERCISES.find(function(e){return e.id===d.choose});if(x&&pickerPlan>=0){if(S.plan[pickerPlan].ex.some(function(e){return lower(e[0])===lower(x.name)}))msg="That exercise is already in this workout.";else{S.plan[pickerPlan].ex.push([x.name,2,"10–12",x.id]);save();pickerPlan=-1}}}
- else if(d.more==="library")libLimit+=60;
- else if(d.more==="picker")pickerLimit+=40;
+
+ else if(d.add){var picker=document.getElementById("pick-"+d.add),name=picker&&picker.value;if(name){S.plan[d.add].ex.push([name,2,"10–12"]);save()}else msg="Choose an exercise first."}
+
  else if(d.theme)setTheme(d.theme);else if(d.do)act(d.do);
+ else if(d.auth){authAction(d.auth);return}
  else if(d.act==="theme")toggleTheme();
- else if(["magic","signin","signup","signout","syncnow"].indexOf(d.act)>=0){authAction(d.act);return}
- else if(d.act==="refreshdata"){refreshExerciseData();return}
- else if(d.act==="clearlibrary"){libQuery="";libMuscle="All";libEquipment="All";libLimit=60}
+ else if(d.act==="refreshapi"){loadExerciseData(true);return}
+ else if(d.act==="morelib"){libLimit+=80}
  else if(d.act==="reset"){if(confirm("Reset everything to the sample data?")){S=seed();migrate();save()}}
+
  render();
 
 });
 
-function renderAndRefocus(id){render();requestAnimationFrame(function(){var e=document.getElementById(id);if(e){e.focus();var n=e.value.length;try{e.setSelectionRange(n,n)}catch(x){}}})}
-document.addEventListener("input",function(ev){var t=ev.target;
- if(t.id==="lib-search"){libQuery=t.value;libLimit=60;renderAndRefocus(t.id)}
- else if(t.id==="pick-search"){pickerQuery=t.value;pickerLimit=40;renderAndRefocus(t.id)}
-});
+document.addEventListener("input",function(ev){if(ev.target.id==="lib-search"){libQuery=ev.target.value;libLimit=80;render()}});
 
 document.addEventListener("change",function(ev){
 
  var t=ev.target;
- if(t.id==="lib-muscle"){libMuscle=t.value;libLimit=60;render();return}
- if(t.id==="lib-equipment"){libEquipment=t.value;libLimit=60;render();return}
- if(t.id==="pick-muscle"){pickerMuscle=t.value;pickerLimit=40;render();return}
- if(t.id==="pick-equipment"){pickerEquipment=t.value;pickerLimit=40;render();return}
+ if(t.id==="lib-muscle"){libMuscle=t.value;libLimit=80;render();return}
+ if(t.id==="lib-equipment"){libEquipment=t.value;libLimit=80;render();return}
+
  if(t.dataset.g){var gv=parseFloat(t.value);if(gv>0)S.goal[t.dataset.g]=gv;save();render();return}
 
  if(t.dataset.k){var e0=S.draft.ex[t.dataset.e],k0=t.dataset.k;
@@ -718,7 +690,7 @@ document.addEventListener("change",function(ev){
 
  if(t.dataset.f){var e=S.plan[t.dataset.i].ex[t.dataset.j],f=t.dataset.f;
 
- if(f==="n")e[0]=t.value.trim()||e[0];
+ if(f==="n")e[0]=t.value||e[0];
 
  else if(f==="s"){var v=Math.max(1,Math.min(10,parseInt(t.value,10)||e[1]));e[1]=v;t.value=v}
 
@@ -728,11 +700,11 @@ document.addEventListener("change",function(ev){
 
 });
 
-async function initApp(){
- try{migrate();writeLocal(localEnvelope.dirty);if(S.theme&&S.theme!=="auto")document.documentElement.setAttribute("data-theme",S.theme);render();await loadExercises();render();await initializeSupabase()}
- catch(e){console.error(e);syncStatus="Startup error · using local cache";render()}
-}
-initApp();
+persistEnvelope();render();loadExerciseData(false);initSupabase();
+document.addEventListener("visibilitychange",function(){if(!document.hidden)pullRemote(false)});
+document.addEventListener("focusout",function(){if(pendingSafeRender)setTimeout(safeRender,0)});
+window.addEventListener("focus",function(){pullRemote(false)});
+setInterval(function(){pullRemote(false)},30000);
 
 })();
 
