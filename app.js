@@ -220,7 +220,7 @@
   }
 
   function syncBadge() {
-    const label = currentUser ? (syncStatus === "syncing" ? "Syncingâ€¦" : syncStatus === "error" ? "Sync error" : "Realtime on") : "Local only";
+    const label = currentUser ? (syncStatus === "syncing" ? "Syncing…" : syncStatus === "error" ? "Sync error" : "Realtime on") : "Local only";
     return `<span class="tag ${currentUser ? "" : "gray"}"><span class="status-dot ${currentUser && syncStatus !== "error" ? "online" : ""}"></span>${esc(label)}</span>`;
   }
 
@@ -232,7 +232,7 @@
     return `
       <div class="top"><div><h1>Dashboard</h1><p>Home training, synced across your devices.</p></div>${syncBadge()}</div>
       <section class="card dashboard-hero">
-        <div class="row between"><div><h2>${plan ? `Today: ${esc(plan.name)}` : "Recovery day"}</h2><p class="muted">${plan ? `${plan.exercises.length} exercises Â· ${DAYS[plan.day]}` : "No workout scheduled today."}</p></div>${plan ? `<button class="btn" data-start-plan="${esc(plan.id)}">Start workout</button>` : `<button class="btn" data-nav="Plans">View plans</button>`}</div>
+        <div class="row between"><div><h2>${plan ? `Today: ${esc(plan.name)}` : "Recovery day"}</h2><p class="muted">${plan ? `${plan.exercises.length} exercises · ${DAYS[plan.day]}` : "No workout scheduled today."}</p></div>${plan ? `<button class="btn" data-start-plan="${esc(plan.id)}">Start workout</button>` : `<button class="btn" data-nav="Plans">View plans</button>`}</div>
       </section>
       <div class="grid three">
         <div class="card"><div class="muted small">This week</div><div class="num">${weekCount}</div><div class="muted small">sessions</div></div>
@@ -240,7 +240,7 @@
         <div class="card"><div class="muted small">Exercise library</div><div class="num">${datasetStatus === "ready" ? exercises.length.toLocaleString() : "â€”"}</div><div class="muted small">${datasetStatus === "ready" ? "with GIF media" : "loading dataset"}</div></div>
       </div>
       <section class="card"><div class="row between"><h2>Quick actions</h2></div><div class="row"><button class="btn primary" data-new-plan>Add workout plan</button><button class="btn" data-nav="Library">Browse exercises</button>${state.draft ? `<button class="btn" data-nav="Session">Resume session</button>` : ""}</div></section>
-      <section class="card"><h2>Latest session</h2>${recent ? `<p><strong>${esc(recent.name)}</strong></p><p class="muted">${new Date(recent.finishedAt || recent.d).toLocaleString()} Â· ${(recent.exercises || recent.ex || []).length} exercises</p>` : `<div class="empty">Complete a workout to see it here.</div>`}</section>`;
+      <section class="card"><h2>Latest session</h2>${recent ? `<p><strong>${esc(recent.name)}</strong></p><p class="muted">${new Date(recent.finishedAt || recent.d).toLocaleString()} · ${(recent.exercises || recent.ex || []).length} exercises</p>` : `<div class="empty">Complete a workout to see it here.</div>`}</section>`;
   }
 
   function renderPlans() {
@@ -260,8 +260,8 @@
 
   function exerciseRow(exercise, { session = false } = {}) {
     const gif = mediaUrl(exercise.gif_url);
-    const media = gif ? `<button class="gif-thumb" data-preview='${attrJson(exercise)}' aria-label="Open GIF for ${esc(exercise.name)}"><img src="${esc(gif)}" alt="${esc(exercise.name)} exercise GIF" loading="lazy"></button>` : `<button class="gif-placeholder" data-find-media="${esc(exercise.name)}">GIF loadingâ€¦</button>`;
-    return `<div class="exercise-row">${media}<div><h3>${esc(exercise.name)}</h3><p>${session ? esc(exercise.reps || "") : `${exercise.sets} sets Ã— ${esc(exercise.reps)}`}${exercise.target ? ` Â· ${esc(exercise.target)}` : ""}</p></div>${session ? "" : `<div class="row"><span class="tag gray">${esc(exercise.equipment || "exercise")}</span></div>`}</div>`;
+    const media = gif ? `<button class="gif-thumb" data-preview='${attrJson(exercise)}' aria-label="Open GIF for ${esc(exercise.name)}"><img src="${esc(gif)}" alt="${esc(exercise.name)} exercise GIF" loading="lazy"></button>` : `<button class="gif-placeholder" data-find-media="${esc(exercise.name)}">GIF loading…</button>`;
+    return `<div class="exercise-row">${media}<div><h3>${esc(exercise.name)}</h3><p>${session ? esc(exercise.reps || "") : `${exercise.sets} sets × ${esc(exercise.reps)}`}${exercise.target ? ` · ${esc(exercise.target)}` : ""}</p></div>${session ? "" : `<div class="row"><span class="tag gray">${esc(exercise.equipment || "exercise")}</span></div>`}</div>`;
   }
 
   function attrJson(value) {
@@ -294,7 +294,7 @@
       <div class="card rest"><div class="row between"><strong>Rest timer</strong><span id="rest-clock" class="num">${formatTime(restSeconds)}</span><div class="row"><button class="chip" data-rest="60">60s</button><button class="chip" data-rest="90">90s</button><button class="chip" data-rest="120">120s</button></div></div></div>
       ${draft.exercises.map((exercise, exIndex) => `<section class="card ${exercise.skipped ? "flat" : ""}">
         ${exerciseRow(exercise, { session: true })}
-        <div class="row between"><span class="muted small">Set Â· kg Â· reps Â· done</span><button class="chip ${exercise.skipped ? "on" : ""}" data-skip-ex="${exIndex}">${exercise.skipped ? "Skipped" : "Skip"}</button></div>
+        <div class="row between"><span class="muted small">Set · kg · reps · done</span><button class="chip ${exercise.skipped ? "on" : ""}" data-skip-ex="${exIndex}">${exercise.skipped ? "Skipped" : "Skip"}</button></div>
         ${exercise.completedSets.map((set, setIndex) => `<div class="session-set"><strong>${setIndex + 1}</strong><input type="number" min="0" step="0.5" value="${set.kg}" data-session-input="kg" data-ex-index="${exIndex}" data-set-index="${setIndex}" aria-label="Weight kg"><input type="number" min="0" value="${set.reps}" data-session-input="reps" data-ex-index="${exIndex}" data-set-index="${setIndex}" aria-label="Repetitions"><button class="check btn ${set.done ? "primary" : ""}" data-toggle-set data-ex-index="${exIndex}" data-set-index="${setIndex}" aria-label="Toggle set ${setIndex + 1}">âœ“</button></div>`).join("")}
         <input placeholder="Exercise notes" value="${esc(exercise.note || "")}" data-ex-note="${exIndex}" aria-label="Notes for ${esc(exercise.name)}">
       </section>`).join("")}
@@ -315,8 +315,8 @@
   function renderLibrary() {
     const bodyParts = [...new Set(exercises.map((x) => x.body_part || x.category).filter(Boolean))].sort();
     const equipment = [...new Set(exercises.map((x) => x.equipment).filter(Boolean))].sort();
-    return `<div class="top"><div><h1>Exercise library</h1><p>Search the exercises-dataset catalogue.</p></div><span class="tag ${datasetStatus === "ready" ? "" : "gray"}">${datasetStatus === "ready" ? `${exercises.length.toLocaleString()} exercises` : datasetStatus === "error" ? "Load failed" : "Loadingâ€¦"}</span></div>
-      <div class="library-controls"><input id="library-search" type="search" value="${esc(libraryQuery)}" placeholder="Search exerciseâ€¦" autocomplete="off"><select id="library-body" aria-label="Filter body part"><option value="all">All muscles</option>${bodyParts.map((x) => `<option value="${esc(x)}" ${libraryBody === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select><select id="library-equipment" aria-label="Filter equipment"><option value="all">All equipment</option>${equipment.map((x) => `<option value="${esc(x)}" ${libraryEquipment === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div>
+    return `<div class="top"><div><h1>Exercise library</h1><p>Search the exercises-dataset catalogue.</p></div><span class="tag ${datasetStatus === "ready" ? "" : "gray"}">${datasetStatus === "ready" ? `${exercises.length.toLocaleString()} exercises` : datasetStatus === "error" ? "Load failed" : "Loading…"}</span></div>
+      <div class="library-controls"><input id="library-search" type="search" value="${esc(libraryQuery)}" placeholder="Search exercise…" autocomplete="off"><select id="library-body" aria-label="Filter body part"><option value="all">All muscles</option>${bodyParts.map((x) => `<option value="${esc(x)}" ${libraryBody === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select><select id="library-equipment" aria-label="Filter equipment"><option value="all">All equipment</option>${equipment.map((x) => `<option value="${esc(x)}" ${libraryEquipment === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div>
       ${datasetStatus === "error" ? `<div class="card"><strong>Dataset could not be loaded.</strong><p class="muted">${esc(datasetError)}</p><button class="btn" data-retry-dataset>Retry</button></div>` : ""}
       <div id="library-results"></div>`;
   }
@@ -337,7 +337,7 @@
       return;
     }
     const list = filteredExercises();
-    root.innerHTML = list.length ? `<div class="exercise-grid">${list.map((exercise) => `<article class="card exercise-card"><button class="gif-thumb" style="width:100%;height:auto;border:0;border-radius:0" data-preview='${attrJson(exercise)}'><img class="media" src="${esc(mediaUrl(exercise.image))}" alt="${esc(exercise.name)}" loading="lazy"></button><div class="body"><h3>${esc(exercise.name)}</h3><p class="muted small">${esc(exercise.body_part || exercise.category)} Â· ${esc(exercise.equipment)}</p><div class="row between"><span class="tag gray">${esc(exercise.target)}</span><button class="chip" data-add-exercise='${attrJson(exercise)}'>Add to plan</button></div></div></article>`).join("")}</div><p class="muted small">Showing up to 80 matching exercises.</p>` : `<div class="card empty">No exercises match these filters.</div>`;
+    root.innerHTML = list.length ? `<div class="exercise-grid">${list.map((exercise) => `<article class="card exercise-card"><button class="gif-thumb" style="width:100%;height:auto;border:0;border-radius:0" data-preview='${attrJson(exercise)}'><img class="media" src="${esc(mediaUrl(exercise.image))}" alt="${esc(exercise.name)}" loading="lazy"></button><div class="body"><h3>${esc(exercise.name)}</h3><p class="muted small">${esc(exercise.body_part || exercise.category)} · ${esc(exercise.equipment)}</p><div class="row between"><span class="tag gray">${esc(exercise.target)}</span><button class="chip" data-add-exercise='${attrJson(exercise)}'>Add to plan</button></div></div></article>`).join("")}</div><p class="muted small">Showing up to 80 matching exercises.</p>` : `<div class="card empty">No exercises match these filters.</div>`;
   }
 
   function normalizeExercise(exercise) {
@@ -444,7 +444,7 @@
     return `<div class="top"><div><h1>Progress</h1><p>Your workout and body-weight history.</p></div></div>
       <div class="grid two"><section class="card"><h2>Completed workouts</h2><div class="num">${sessions.length}</div><span class="muted">all time</span></section><section class="card"><h2>Latest weight</h2><div class="num">${weights.length ? `${weights[0].kg} kg` : "â€”"}</div><span class="muted">${weights.length ? new Date(weights[0].date).toLocaleDateString() : "not logged"}</span></section></div>
       <section class="card"><h2>Log body weight</h2><div class="row"><input id="weight-value" type="number" step="0.1" min="1" placeholder="Weight in kg" style="max-width:240px"><button class="btn primary" data-add-weight>Save</button></div></section>
-      <section class="card"><h2>Session history</h2>${sessions.length ? sessions.map((session) => `<div class="exercise-row" style="grid-template-columns:1fr auto"><div><h3>${esc(session.name)}</h3><p>${new Date(session.finishedAt || session.d).toLocaleString()} Â· ${(session.exercises || session.ex || []).length} exercises</p></div><button class="chip danger" data-delete-session="${esc(session.id || session.finishedAt)}">Delete</button></div>`).join("") : `<div class="empty">No completed sessions yet.</div>`}</section>`;
+      <section class="card"><h2>Session history</h2>${sessions.length ? sessions.map((session) => `<div class="exercise-row" style="grid-template-columns:1fr auto"><div><h3>${esc(session.name)}</h3><p>${new Date(session.finishedAt || session.d).toLocaleString()} · ${(session.exercises || session.ex || []).length} exercises</p></div><button class="chip danger" data-delete-session="${esc(session.id || session.finishedAt)}">Delete</button></div>`).join("") : `<div class="empty">No completed sessions yet.</div>`}</section>`;
   }
 
   function renderNutrition() {
@@ -456,7 +456,7 @@
     return `<div class="top"><div><h1>Nutrition</h1><p>Simple daily calorie and protein log.</p></div></div>
       <div class="grid two"><div class="card"><h2>Calories</h2><div class="num">${Math.round(kcal)} / ${state.goals.kcal}</div>${bar(kcal, state.goals.kcal)}</div><div class="card"><h2>Protein</h2><div class="num">${Math.round(protein)} / ${state.goals.protein} g</div>${bar(protein, state.goals.protein)}</div></div>
       <section class="card"><h2>Add food</h2><div class="field-row"><div><label for="meal-name">Food</label><input id="meal-name" placeholder="e.g. chicken and rice"></div><div><label for="meal-type">Meal</label><select id="meal-type"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div><div><label for="meal-kcal">kcal</label><input id="meal-kcal" type="number" min="0"></div><div><label for="meal-protein">Protein (g)</label><input id="meal-protein" type="number" min="0"></div></div><button class="btn primary" data-add-meal style="margin-top:12px">Add food</button></section>
-      <section class="card"><h2>Today</h2>${meals.length ? meals.map((meal) => `<div class="exercise-row" style="grid-template-columns:1fr auto"><div><h3>${esc(meal.name)}</h3><p>${esc(meal.type)} Â· ${meal.kcal} kcal Â· ${meal.protein} g protein</p></div><button class="chip danger" data-delete-meal="${esc(meal.id)}">Delete</button></div>`).join("") : `<div class="empty">Nothing logged today.</div>`}</section>`;
+      <section class="card"><h2>Today</h2>${meals.length ? meals.map((meal) => `<div class="exercise-row" style="grid-template-columns:1fr auto"><div><h3>${esc(meal.name)}</h3><p>${esc(meal.type)} · ${meal.kcal} kcal · ${meal.protein} g protein</p></div><button class="chip danger" data-delete-meal="${esc(meal.id)}">Delete</button></div>`).join("") : `<div class="empty">Nothing logged today.</div>`}</section>`;
   }
 
   function configured() {
@@ -466,7 +466,7 @@
 
   function renderSettings() {
     const configOk = configured();
-    const account = currentUser ? `<div class="row between"><div><strong>${esc(currentUser.email || "Signed in")}</strong><p class="muted small">Supabase Auth Â· Realtime enabled</p></div><div class="row"><button class="btn" data-sync-now>Sync now</button><button class="btn danger" data-sign-out>Sign out</button></div></div>` : `<div class="field-row"><div><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com"></div><div><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div></div><div class="row" style="margin-top:12px"><button class="btn primary" data-sign-in ${configOk ? "" : "disabled"}>Sign in</button><button class="btn" data-sign-up ${configOk ? "" : "disabled"}>Create account</button><button class="btn" data-magic-link ${configOk ? "" : "disabled"}>Send magic link</button></div>`;
+    const account = currentUser ? `<div class="row between"><div><strong>${esc(currentUser.email || "Signed in")}</strong><p class="muted small">Supabase Auth · Realtime enabled</p></div><div class="row"><button class="btn" data-sync-now>Sync now</button><button class="btn danger" data-sign-out>Sign out</button></div></div>` : `<div class="field-row"><div><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com"></div><div><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div></div><div class="row" style="margin-top:12px"><button class="btn primary" data-sign-in ${configOk ? "" : "disabled"}>Sign in</button><button class="btn" data-sign-up ${configOk ? "" : "disabled"}>Create account</button><button class="btn" data-magic-link ${configOk ? "" : "disabled"}>Send magic link</button></div>`;
     return `<div class="top"><div><h1>Settings</h1><p>Account, sync and local data.</p></div>${syncBadge()}</div>
       <section class="card"><h2>Account / Login</h2>${!configOk ? `<div class="knee"><strong>Supabase is not configured.</strong> Add Project URL and anon/publishable key in <code>config.js</code>. Never use a service_role key.</div>` : ""}${account}</section>
       <section class="card"><h2>Appearance</h2><div class="row"><button class="chip ${state.theme === "light" ? "on" : ""}" data-theme="light">Light</button><button class="chip ${state.theme === "dark" ? "on" : ""}" data-theme="dark">Dark</button><button class="chip ${state.theme === "auto" ? "on" : ""}" data-theme="auto">Match device</button></div></section>
@@ -475,7 +475,7 @@
   }
 
   function openModal(title, body, { wide = false } = {}) {
-    modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="modal-title" data-modal-panel><div class="modal-head"><h2 id="modal-title">${esc(title)}</h2><button class="icon-btn" data-close-modal aria-label="Close">Ã—</button></div><div class="modal-body">${body}</div></section></div>`;
+    modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="modal-title" data-modal-panel><div class="modal-head"><h2 id="modal-title">${esc(title)}</h2><button class="icon-btn" data-close-modal aria-label="Close">×</button></div><div class="modal-body">${body}</div></section></div>`;
     modalRoot.querySelector(".modal-backdrop").addEventListener("click", (event) => { if (event.target === event.currentTarget) closeModal(); });
     setTimeout(() => modalRoot.querySelector("button,input,select")?.focus(), 0);
   }
@@ -499,7 +499,7 @@
     if (!editorDraft) return;
     openModal(editorId ? "Edit workout plan" : "Add workout plan", `
       <div class="field-row"><div><label for="plan-name">Plan name</label><input id="plan-name" value="${esc(editorDraft.name)}" placeholder="e.g. Upper Body C" data-editor-plan="name"></div><div><label for="plan-day">Training day</label><select id="plan-day" data-editor-plan="day">${DAYS.map((day, index) => `<option value="${index}" ${+editorDraft.day === index ? "selected" : ""}>${day}</option>`).join("")}</select></div></div>
-      <label for="plan-note">Notes</label><input id="plan-note" value="${esc(editorDraft.note || "")}" placeholder="Goal, equipment, safety notesâ€¦" data-editor-plan="note">
+      <label for="plan-note">Notes</label><input id="plan-note" value="${esc(editorDraft.note || "")}" placeholder="Goal, equipment, safety notes…" data-editor-plan="note">
       <div class="row between" style="margin-top:18px"><h3>Exercises (${editorDraft.exercises.length})</h3><button class="btn" data-open-picker>+ Add exercise</button></div>
       <div id="editor-exercises">${editorDraft.exercises.map((exercise, index) => `<div class="editor-exercise"><div><strong>${esc(exercise.name)}</strong><div class="muted small">${esc(exercise.equipment || "")}</div></div><input type="number" min="1" max="20" value="${exercise.sets}" data-editor-ex="sets" data-editor-index="${index}" aria-label="Sets"><input value="${esc(exercise.reps)}" data-editor-ex="reps" data-editor-index="${index}" aria-label="Reps"><button class="chip danger remove" data-remove-editor-ex="${index}">Remove</button></div>`).join("") || `<div class="empty">Add at least one exercise from the dataset.</div>`}</div>
       <div class="row between" style="margin-top:18px"><button class="btn" data-close-modal>Cancel</button><button class="btn primary" data-save-plan>Save plan</button></div>`, { wide: true });
@@ -524,7 +524,7 @@
 
   function openPicker() {
     if (datasetStatus !== "ready") { showToast("Exercise dataset is still loading"); return; }
-    openModal("Choose an exercise", `<div class="library-controls" style="position:static"><input id="picker-search" type="search" placeholder="Search exercisesâ€¦" autocomplete="off"><select id="picker-equipment"><option value="all">All equipment</option>${[...new Set(exercises.map((x) => x.equipment))].sort().map((x) => `<option value="${esc(x)}" ${x === "dumbbell" ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div><div id="picker-results" class="picker-list"></div><div class="row" style="margin-top:14px"><button class="btn" data-back-editor>Back to plan</button></div>`, { wide: true });
+    openModal("Choose an exercise", `<div class="library-controls" style="position:static"><input id="picker-search" type="search" placeholder="Search exercises…" autocomplete="off"><select id="picker-equipment"><option value="all">All equipment</option>${[...new Set(exercises.map((x) => x.equipment))].sort().map((x) => `<option value="${esc(x)}" ${x === "dumbbell" ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div><div id="picker-results" class="picker-list"></div><div class="row" style="margin-top:14px"><button class="btn" data-back-editor>Back to plan</button></div>`, { wide: true });
     renderPickerResults("", "dumbbell");
   }
 
@@ -533,7 +533,7 @@
     if (!root) return;
     const q = query.trim().toLowerCase();
     const list = exercises.filter((exercise) => (!q || `${exercise.name} ${exercise.target}`.toLowerCase().includes(q)) && (equipment === "all" || exercise.equipment === equipment)).slice(0, 80);
-    root.innerHTML = list.map((exercise) => `<div class="picker-item"><img src="${esc(mediaUrl(exercise.image))}" alt="" loading="lazy"><div><strong>${esc(exercise.name)}</strong><div class="muted small">${esc(exercise.target)} Â· ${esc(exercise.equipment)}</div></div><button class="chip" data-pick-exercise='${attrJson(exercise)}'>Add</button></div>`).join("") || `<div class="empty">No matching exercises.</div>`;
+    root.innerHTML = list.map((exercise) => `<div class="picker-item"><img src="${esc(mediaUrl(exercise.image))}" alt="" loading="lazy"><div><strong>${esc(exercise.name)}</strong><div class="muted small">${esc(exercise.target)} · ${esc(exercise.equipment)}</div></div><button class="chip" data-pick-exercise='${attrJson(exercise)}'>Add</button></div>`).join("") || `<div class="empty">No matching exercises.</div>`;
   }
 
   function confirmDeletePlan(planId) {
